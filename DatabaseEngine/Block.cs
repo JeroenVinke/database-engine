@@ -27,16 +27,18 @@ namespace DatabaseEngine
         );
 
         // header
-        public List<Offset> Offsets { get; set; } = new List<Offset>();
+        public BlockHeader Header { get; set; }
         public List<Record> Records { get; set; } = new List<Record>();
+
+        public Block NextBlock { get; set; } // overflow
+        public Relation Relation { get; set; }
+
         public int Size { get; internal set; }
         public static int BlockSize = 4096;
-        public static int FixedHeaderSize = 0;
-        public Relation Relation { get; set; }
 
         internal void AddRecord(Record record)
         {
-            Offset last = Offsets.FirstOrDefault();
+            Offset last = Header.Offsets.FirstOrDefault();
             int offset;
             if (last == null)
             {
@@ -46,76 +48,48 @@ namespace DatabaseEngine
             {
                 offset = last.Bytes - record.Length;
             }
-            Offsets.Insert(0, new Offset() { Bytes = offset });
+            Header.Offsets.Insert(0, new Offset() { Bytes = offset });
             Records.Add(record);
         }
 
         public byte[] ToBytes()
         {
-            byte[] bytes = new byte[Size];
-            int i = 0;
-            foreach (Offset offset in Offsets)
-            {
-                byte[] offsetBytes = offset.GetOffsetInBytes();
-                for(int ii = 0; ii < offsetBytes.Length; ii++)
-                {
-                    bytes[i + ii] = offsetBytes[ii];
-                }
-                i += 2;
-            }
+            List<byte> bytes = new List<byte>(Size);
+            bytes.AddRange(Header.ToBytes());
 
-            
-
-            i = Size;
+            byte[] byteArray = bytes.ToArray();
+            int i = Size;
             foreach(Record record in Records)
             {
                 byte[] recordBytes = record.ToBytes();
 
-                recordBytes.CopyTo(bytes, i - recordBytes.Length);
+                recordBytes.CopyTo(byteArray, i - recordBytes.Length);
 
                 i -= recordBytes.Length;
             }
 
-            return bytes.ToArray();
+            return byteArray;
         }
 
-        public static Block CreateBlockFromBuffer(byte[] buffer, TableDefinition tableDefinition)
+        public static Block CreateBlockFromBuffer(byte[] data, TableDefinition tableDefinition)
         {
-            List<Offset> offsets = new List<Offset>();
-            // todo, anders bepalen hoeveel offsets er zijn
-            int maxRecords = (BlockSize - FixedHeaderSize) / tableDefinition.MaxRecordSize;
-            for (int i = FixedHeaderSize; i < BlockSize; i += 2)
+            BlockBuffer buffer = new BlockBuffer(data);
+
+            Block block = new Block();
+            block.Header = BlockHeader.CreateHeader(buffer);
+
+            List<DataRecord> records = new List<DataRecord>();
+
+            for (int i = block.Header.Offsets.Count - 1; i >= 0; i--)
             {
-                ushort offsetShort = BitConverter.ToUInt16(new byte[] { buffer[i], buffer[i + 1] }, 0);
-                if (offsetShort > 0)
-                {
-                    Offset offset = new Offset()
-                    {
-                        Bytes = offsetShort
-                    };
-                    offsets.Add(offset);
-                }
-                else
-                {
-                    break;
-                }
-            }
+                byte[] recordBytes = buffer.ReadBytes(block.Header.Offsets[i].Bytes).ToArray();
 
-            List<Record> records = new List<Record>();
-
-            for (int i = 0; i < offsets.Count; i++)
-            {
-                Offset nextOffset = offsets.Count > i + 1 ? offsets[i + 1] : new Offset { Bytes = BlockSize };
-                byte[] recordBytes = buffer.Skip(offsets[i].Bytes).Take(nextOffset.Bytes - offsets[i].Bytes).ToArray();
-
-                Record record = Record.FromBytes(recordBytes);
+                DataRecord record = DataRecord.FromBytes(recordBytes);
                 records.Add(record);
             }
 
-            Block block = new Block();
-            block.Offsets = offsets;
+            block.Records = records.Cast<Record>().ToList();
             block.Relation = tableDefinition;
-            block.Records = records;
 
             return block;
         }
@@ -159,12 +133,13 @@ namespace DatabaseEngine
             return set;
         }
 
-        public static Block CreateFromSet(Set products)
+        public static Block CreateDataBlock(Set items)
         {
             Block block = new Block();
             block.Size = Block.BlockSize;
+            block.Header = new DataBlockHeader(null);
 
-            foreach (CustomTuple tuple in products.All())
+            foreach (CustomTuple tuple in items.All())
             {
                 Record record = tuple.ToRecord();
 
@@ -172,16 +147,6 @@ namespace DatabaseEngine
             }
 
             return block;
-        }
-    }
-
-    public class Offset
-    {
-        public int Bytes { get; set; }
-
-        internal byte[] GetOffsetInBytes()
-        {
-            return BitConverter.GetBytes((ushort)(Bytes));
         }
     }
 }

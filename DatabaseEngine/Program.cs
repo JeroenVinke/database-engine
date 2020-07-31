@@ -32,6 +32,38 @@ namespace DatabaseEngine
         unsafe static void Main(string[] args)
         {
             StorageFile = $"{Directory.GetCurrentDirectory()}\\data.storage";
+
+            IntPtr fileHandle = OpenOrCreateFile();
+            Block storageBlock = CreateStorageBlock();
+
+            //Block indexBlock = CreateRootBlock();
+            //Block branchBlock = CreateBranchBlock();
+
+            ;
+        }
+
+        //private static Block CreateBranchBlock()
+        //{
+        //    Block branchBlock = new Block();
+        //    branchBlock.Type = BlockType.Branch;
+
+        //    branchBlock.AddRecord(new IndexRecord { });
+
+        //    return branchBlock;
+        //}
+
+        //private static Block CreateRootBlock()
+        //{
+        //    Block branchBlock = new Block();
+        //    branchBlock.Type = BlockType.Root;
+
+        //    branchBlock.AddRecord(new IndexRecord { });
+
+        //    return branchBlock;
+        //}
+
+        private static Block CreateStorageBlock()
+        {
             TableDefinition productsTable = new TableDefinition()
             {
                 Name = "Product",
@@ -45,26 +77,22 @@ namespace DatabaseEngine
             products.Add(new object[] { 1994, "Intel" });
             products.Add(new object[] { 2010, "AMD" });
 
-            Save(products);
-            
-
-
-            ;
+            return Block.CreateDataBlock(products);
         }
 
-        private static void Save(Set products)
-        {
-            IntPtr fileHandle = OpenOrCreateFile();
+        //private static void Save(Set products)
+        //{
+        //IntPtr fileHandle = OpenOrCreateFile();
 
-            Block block = Block.CreateFromSet(products);
-            block.Write(fileHandle);
+        //Block block = Block.CreateFromSet(products);
+        //block.Write(fileHandle);
 
-            fileHandle = OpenOrCreateFile();
-            Block readBlock = Block.ReadBlock(fileHandle, 0, (TableDefinition)products.Relation);
-            Set readProducts = readBlock.GetSet();
+        //fileHandle = OpenOrCreateFile();
+        //Block readBlock = Block.ReadBlock(fileHandle, 0, (TableDefinition)products.Relation);
+        //Set readProducts = readBlock.GetSet();
 
-            int count = readProducts.Count();
-        }
+        //int count = readProducts.Count();
+        //}
 
         private static IntPtr OpenOrCreateFile()
         {

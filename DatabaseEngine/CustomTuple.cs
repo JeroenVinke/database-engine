@@ -46,25 +46,28 @@ namespace DatabaseEngine
         {
             int i = 0;
             int ii = 0;
-            foreach (AttributeDefinition attributeDefinition in ((TableDefinition)Relation))
+            if (record is DataRecord dataRecord)
             {
-                if (attributeDefinition.IsFixedSize)
+                foreach (AttributeDefinition attributeDefinition in ((TableDefinition)Relation))
                 {
-                    byte[] entryBytes = record.Content.Skip(i).Take(attributeDefinition.Size).ToArray();
+                    if (attributeDefinition.IsFixedSize)
+                    {
+                        byte[] entryBytes = dataRecord.Content.Skip(i).Take(attributeDefinition.Size).ToArray();
 
-                    Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
+                        Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
 
-                    i += attributeDefinition.Size;
-                }
-                else
-                {
-                    Offset nextOffset = record.Offsets.Count > i + 1 ? record.Offsets[i + 1] : new Offset { Bytes = record.Content.Length - 1 };
-                    byte[] entryBytes = record.Content.Skip(i).Take(nextOffset.Bytes - record.Offsets[ii].Bytes).ToArray();
+                        i += attributeDefinition.Size;
+                    }
+                    else
+                    {
+                        Offset nextOffset = dataRecord.Offsets.Count > i + 1 ? dataRecord.Offsets[i + 1] : new Offset { Bytes = dataRecord.Content.Length - 1 };
+                        byte[] entryBytes = dataRecord.Content.Skip(i).Take(nextOffset.Bytes - dataRecord.Offsets[ii].Bytes).ToArray();
 
-                    Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
+                        Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
 
-                    i += entryBytes.Length;
-                    ii++;
+                        i += entryBytes.Length;
+                        ii++;
+                    }
                 }
             }
 
@@ -73,7 +76,7 @@ namespace DatabaseEngine
 
         internal Record ToRecord()
         {
-            Record record = new Record
+            DataRecord record = new DataRecord
             {
                 SchemaPointer = ((TableDefinition)Relation).Id
             };
