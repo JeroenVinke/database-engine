@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 
 namespace DatabaseEngine
@@ -8,7 +9,10 @@ namespace DatabaseEngine
     [DebuggerDisplay("Values: {Values}, Min: {Min}, Max: {Max}, IsRoot: {IsRoot}, Children: {Children}")]
     public class BPlusTreeNode
     {
+        // Pointers
         public List<BPlusTreeNode> Children { get; set; } = new List<BPlusTreeNode>();
+
+        public Dictionary<long, BPlusTreeNode> NodeCache { get; set; } = new Dictionary<long, BPlusTreeNode>();
 
         public bool IsLeaf => Children.Count == 0;
         public int MaxSize { get; set; } = 3;
@@ -21,10 +25,32 @@ namespace DatabaseEngine
 
         public BPlusTreeNode Sibling { get; set; }
         public BPlusTreeNode Parent { get; set; }
+        public StorageFile StorageFile { get; set; } 
+        public Pointer Pointer { get; set; }
 
-        public BPlusTreeNode()
+        public BPlusTreeNode(Pointer pointer)
         {
             Id = MaxId++;
+            Pointer = pointer;
+        }
+
+        public BPlusTreeNode ReadNode(long pointerValue)
+        {
+            if (NodeCache.ContainsKey(pointerValue))
+            {
+                return NodeCache[pointerValue];
+            }
+
+            Pointer pointer = Pointer.GetPointerFromLong(pointerValue);
+
+            Block block = StorageFile.ReadBlock(pointer.PageNumber);
+
+            return new BPlusTreeNode(pointer);
+        }
+
+        private BPlusTreeNode ReadNode(Pointer pointer)
+        {
+            return ReadNode(pointer.GetPointerAsLong());
         }
 
         public BPlusTreeNode AddValue(int value)
@@ -57,8 +83,9 @@ namespace DatabaseEngine
                 {
                     if (value.Pointer != null)
                     {
-                        value.Pointer.Parent = leftChild;
-                        leftChild.Children.Add(value.Pointer);
+                        BPlusTreeNode node = ReadNode(value.Pointer);
+                        node.Parent = leftChild;
+                        leftChild.Children.Add(node);
                     }
                 }
 
@@ -68,12 +95,13 @@ namespace DatabaseEngine
                 {
                     if (value.Pointer != null)
                     {
-                        value.Pointer.Parent = rightChild;
-                        rightChild.Children.Add(value.Pointer);
+                        BPlusTreeNode node = ReadNode(value.Pointer);
+                        node.Parent = rightChild;
+                        rightChild.Children.Add(node);
                     }
                 }
 
-                BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Pointer = rightChild, Value = Values[half].Value };
+                BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Pointer = rightChild.Pointer, Value = Values[half].Value };
                 Values = new List<BPlusTreeNodeValue> { middle };
 
                 if (leftChild.IsLeaf)
@@ -97,7 +125,7 @@ namespace DatabaseEngine
                     Sibling = rightChild;
                 }
 
-                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, Pointer = rightChild });
+                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, Pointer = rightChild.Pointer });
             }
         }
 
@@ -154,9 +182,11 @@ namespace DatabaseEngine
 
         public BPlusTreeNode AddChild()
         {
-            BPlusTreeNode child = new BPlusTreeNode();
+            BPlusTreeNode child = new BPlusTreeNode(StorageFile.GetFreeBlock());
             child.MaxSize = child.MaxSize;
             child.Parent = this;
+            child.NodeCache = NodeCache;
+            child.StorageFile = StorageFile;
             Children.Add(child);
             return child;
         }

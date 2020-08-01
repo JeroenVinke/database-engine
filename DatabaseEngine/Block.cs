@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using static DatabaseEngine.Program;
+using static DatabaseEngine.StorageFile;
 
 namespace DatabaseEngine
 {
     public class Block
     {
         [DllImport("kernel32.dll")]
-        static extern bool WriteFileEx(
+        public static extern bool WriteFileEx(
             IntPtr hFile,
             byte[] lpBuffer,
             uint nNumberOfBytesToWrite,
@@ -18,7 +18,7 @@ namespace DatabaseEngine
             WriteFileCompletionDelegate lpCompletionRoutine);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool ReadFile(
+        public static extern bool ReadFile(
             IntPtr hFile,
             byte[] lpBuffer,
             uint nNumberOfBytesToRead,
@@ -34,7 +34,7 @@ namespace DatabaseEngine
         public Relation Relation { get; set; }
 
         public int Size { get; internal set; }
-        public static int BlockSize = 4096;
+        public const int BlockSize = 4096;
 
         internal void AddRecord(Record record)
         {
@@ -71,10 +71,28 @@ namespace DatabaseEngine
             return byteArray;
         }
 
-        public static Block CreateBlockFromBuffer(byte[] data, TableDefinition tableDefinition)
+        public static Block CreateIndexBlockFromBuffer(BlockBuffer buffer)
         {
-            BlockBuffer buffer = new BlockBuffer(data);
+            Block block = new Block();
+            block.Header = BlockHeader.CreateHeader(buffer);
 
+            List<IndexRecord> records = new List<IndexRecord>();
+
+            for (int i = block.Header.Offsets.Count - 1; i >= 0; i--)
+            {
+                byte[] recordBytes = buffer.ReadBytes(block.Header.Offsets[i].Bytes).ToArray();
+
+                IndexRecord record = IndexRecord.FromBytes(recordBytes);
+                records.Add(record);
+            }
+
+            block.Records = records.Cast<Record>().ToList();
+
+            return block;
+        }
+
+        public static Block CreateDataBlockFromBuffer(BlockBuffer buffer, TableDefinition tableDefinition)
+        {
             Block block = new Block();
             block.Header = BlockHeader.CreateHeader(buffer);
 
@@ -92,31 +110,6 @@ namespace DatabaseEngine
             block.Relation = tableDefinition;
 
             return block;
-        }
-
-        public void Write(IntPtr fileHandle)
-        {
-            byte[] blockBytes = ToBytes();
-
-            NativeOverlapped overlapped = new NativeOverlapped();
-            overlapped.OffsetLow = 0;
-            WriteFileEx(fileHandle, blockBytes, (uint)blockBytes.Length, ref overlapped, Completed);
-        }
-
-        private static void Completed(uint dwErrorCode, uint dwNumberOfBytesTransfered, ref NativeOverlapped lpOverlapped)
-        {
-            ;
-        }
-
-        public static Block ReadBlock(IntPtr fileHandle, int fileOffset, TableDefinition tableDefinition)
-        {
-            NativeOverlapped overlapped = new NativeOverlapped();
-            overlapped.OffsetLow = fileOffset;
-            byte[] buffer = new byte[Block.BlockSize];
-            uint readBytes;
-            ReadFile(fileHandle, buffer, (uint)Block.BlockSize, out readBytes, ref overlapped);
-
-            return CreateBlockFromBuffer(buffer, tableDefinition);
         }
 
         public Set GetSet()

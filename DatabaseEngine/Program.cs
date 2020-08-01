@@ -7,35 +7,20 @@ using System.Threading;
 
 namespace DatabaseEngine
 {
-    class Program
+    public class Program
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern IntPtr CreateFile(
-            string lpFileName,
-            uint dwDesiredAccess,
-            uint dwShareMode,
-            uint lpSecurityAttributes,
-            uint dwCreationDisposition,
-            uint dwFlagsAndAttributes,
-            uint hTemplateFile
-        );
-
-
-        public delegate void WriteFileCompletionDelegate(UInt32 dwErrorCode,
-          UInt32 dwNumberOfBytesTransfered, ref NativeOverlapped lpOverlapped);
-
-        public static string StorageFile;
 
         public static List<TableDefinition> Tables = new List<TableDefinition>();
 
 
         unsafe static void Main(string[] args)
         {
-            StorageFile = $"{Directory.GetCurrentDirectory()}\\data.storage";
+            StorageFile storageFile = new StorageFile($"{Directory.GetCurrentDirectory()}\\data.storage");
 
-            IntPtr fileHandle = OpenOrCreateFile();
-            Block storageBlock = CreateStorageBlock();
+            FileHeader header = new FileHeader(storageFile);
 
+
+            //Block storageBlock = CreateStorageBlock();
             //Block indexBlock = CreateRootBlock();
             //Block branchBlock = CreateBranchBlock();
 
@@ -94,18 +79,6 @@ namespace DatabaseEngine
         //int count = readProducts.Count();
         //}
 
-        private static IntPtr OpenOrCreateFile()
-        {
-            IntPtr fileHandle = CreateFile(StorageFile,
-                      (uint)NativeFileAccess.GENERIC_READ | (uint)NativeFileAccess.GENERIC_WRITE,
-                      (uint)NativeShareMode.FILE_SHARE_READ | (uint)NativeShareMode.FILE_SHARE_WRITE,
-                      0,
-                      (uint)NativeCreationDeposition.OPEN_ALWAYS,
-                      (uint)FileAttribute.NORMAL,
-                      0);
-
-            return fileHandle;
-        }
     }
 
     public enum NativeFileAccess : uint

@@ -6,6 +6,6 @@ namespace DatabaseEngine
     public class BPlusTreeNodeValue
     {
         public int Value { get; set; }
-        public BPlusTreeNode Pointer { get; set; }
+        public Pointer Pointer { get; set; }
     }
 }

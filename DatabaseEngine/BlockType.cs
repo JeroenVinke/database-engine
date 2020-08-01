@@ -2,7 +2,8 @@
 {
     public enum BlockType
     {
-        Index = 0x00000000,
-        Data = 0x00000001
+        Free = 0x00000000,
+        Index = 0x00000001,
+        Data = 0x00000002
     }
 }
