@@ -8,7 +8,7 @@ namespace DatabaseEngine
     {
         private StorageFile _storageFile;
 
-        public int FirstFreeBlock { get; set; } = 2;
+        public int FirstFreeBlock { get; set; } = 0;
 
         public FileHeader(StorageFile storageFile)
         {

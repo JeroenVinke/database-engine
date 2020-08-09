@@ -66,8 +66,9 @@ namespace DatabaseEngine
 
         public Pointer GetFreeBlock()
         {
+            Header.FirstFreeBlock++;
             // free block pointer bijhouden in file header
-            return null;
+            return new Pointer(Header.FirstFreeBlock, 0);
         }
 
         public void Write(IntPtr fileHandle)

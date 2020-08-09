@@ -18,7 +18,7 @@ namespace DatabaseEngine
 
         public long GetPointerAsLong()
         {
-            return PageNumber ^ Index;
+            return (PageNumber << 4) ^ Index;
         }
 
         public static Pointer GetPointerFromLong(long value)

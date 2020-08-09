@@ -17,7 +17,25 @@ namespace DatabaseEngine
         {
             StorageFile storageFile = new StorageFile($"{Directory.GetCurrentDirectory()}\\data.storage");
 
-            FileHeader header = new FileHeader(storageFile);
+            Pointer dataBlock1 = storageFile.GetFreeBlock();
+
+            BPlusTreeNode root = new BPlusTreeNode(storageFile.GetFreeBlock());
+            root.IsLeaf = true;
+            root.StorageFile = storageFile;
+            root.AddValue(10, new Pointer(dataBlock1.PageNumber, 1));
+            root.AddValue(20, new Pointer(dataBlock1.PageNumber, 2));
+            root.AddValue(30, new Pointer(dataBlock1.PageNumber, 3));
+            root.AddValue(40, new Pointer(dataBlock1.PageNumber, 4));
+            root.AddValue(50, new Pointer(dataBlock1.PageNumber, 5));
+            root.AddValue(60, new Pointer(dataBlock1.PageNumber, 6));
+            root.AddValue(70, new Pointer(dataBlock1.PageNumber, 7));
+            root.AddValue(80, new Pointer(dataBlock1.PageNumber, 8));
+            root.AddValue(90, new Pointer(dataBlock1.PageNumber, 9));
+            root.AddValue(100, new Pointer(dataBlock1.PageNumber, 10));
+
+            Pointer dataPointer = root.Find(40);
+
+            string s = root.ToDot();
 
 
             //Block storageBlock = CreateStorageBlock();

@@ -74,7 +74,7 @@ namespace DatabaseEngine
         public static Block CreateIndexBlockFromBuffer(BlockBuffer buffer)
         {
             Block block = new Block();
-            block.Header = BlockHeader.CreateHeader(buffer);
+            block.Header = IndexBlockHeader.CreateIndexHeader(buffer);
 
             List<IndexRecord> records = new List<IndexRecord>();
 
