@@ -14,9 +14,8 @@ namespace DatabaseEngine
         public int MaxSize { get; set; } = 3;
         public bool IsRoot => Parent == null;
 
-        public List<Pointer> Pointers { get; set; } = new List<Pointer>();
         public List<BPlusTreeNodeValue> Values { get; set; } = new List<BPlusTreeNodeValue>();
-        public IEnumerable<BPlusTreeNode> PointerNodes => Pointers.Select(x => ReadNode(x));
+        public IEnumerable<BPlusTreeNode> PointerNodes => Values.SelectMany(x => new List<Pointer> { x.LeftPointer, x.RightPointer }).Where(x => x != null).Select(x => ReadNode(x));//Pointers.Select(x => ReadNode(x));
         public int Min => Values.Select(x => x.Value).Min();
         public int Max => Values.Select(x => x.Value).Max();
         public static int MaxId = 0;
@@ -60,7 +59,15 @@ namespace DatabaseEngine
         {
             if (IsLeaf)
             {
-                return Pointers[Values.FindIndex(x => x.Value == value)];
+                for(int i = Values.Count - 1; i >= 0; i--)
+                {
+                    if (value == Values[i].Value)
+                    {
+                        return Values[i].Pointer;
+                    }
+                }
+
+                throw new Exception("Expected to find value");
             }
             else
             {
@@ -110,7 +117,7 @@ namespace DatabaseEngine
                         {
                             node.Parent = leftChild;
                         }
-                        leftChild.AddPointer(value.Pointer);
+                        //leftChild.AddPointer(value.Pointer);
                     }
                 }
 
@@ -126,13 +133,11 @@ namespace DatabaseEngine
                         {
                             node.Parent = rightChild;
                         }
-                        rightChild.AddPointer(value.Pointer);
                     }
                 }
 
-                BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Value = Values[half].Value, Pointer = rightChild.Page };
+                BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Value = Values[half].Value, LeftPointer = leftChild.Page, RightPointer = rightChild.Page };
                 Values = new List<BPlusTreeNodeValue> { middle };
-                SetPointers(new List<Pointer> { leftChild.Page, rightChild.Page });
 
                 if (leftChild.IsLeaf)
                 {
@@ -149,10 +154,8 @@ namespace DatabaseEngine
 
                 BPlusTreeNode rightChild = Parent.AddChild();
                 rightChild.Values = secondHalf;
-                rightChild.SetPointers(Pointers.Skip(half).ToList());
 
                 Values = firstHalf;
-                SetPointers(Pointers.Take(half).ToList());
 
                 if (IsLeaf)
                 {
@@ -160,33 +163,7 @@ namespace DatabaseEngine
                     rightChild.IsLeaf = true;
                 }
 
-                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, Pointer = rightChild.Page });
-            }
-        }
-
-        private void AddPointer(Pointer pointer, int index = -1)
-        {
-            if (Pointers.Any(x => x.GetPointerAsLong() == pointer.GetPointerAsLong()))
-            {
-                return;
-            }
-
-            if (index == -1)
-            {
-                Pointers.Add(pointer);
-            }
-            else
-            {
-                Pointers.Insert(index, pointer);
-            }
-        }
-
-        private void SetPointers(IEnumerable<Pointer> pointers)
-        {
-            Pointers = new List<Pointer>();
-            foreach(Pointer pointer in pointers)
-            {
-                AddPointer(pointer);
+                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page });
             }
         }
 
@@ -206,12 +183,10 @@ namespace DatabaseEngine
             if (target == -1)
             {
                 Values.Add(value);
-                AddPointer(value.Pointer);
             }
             else
             {
                 Values.Insert(target, value);
-                AddPointer(value.Pointer, target);
             }
 
             if (Values.Count > MaxSize)
@@ -233,11 +208,11 @@ namespace DatabaseEngine
             {
                 if (value > Values[i].Value)
                 {
-                    return Pointers[i+1];
+                    return Values[i].RightPointer;
                 }
             }
 
-            return Pointers[0];
+            return Values[0].LeftPointer;
         }
 
         public BPlusTreeNode AddChild()
@@ -247,7 +222,6 @@ namespace DatabaseEngine
             child.Parent = this;
             child.NodeCache = NodeCache;
             child.StorageFile = StorageFile;
-            //AddPointer(child.Page);
             NodeCache.Add(child.Page.GetPointerAsLong(), child);
             return child;
         }
@@ -257,7 +231,8 @@ namespace DatabaseEngine
             string dot = "";
 
             if (Values.Count > 0)
-            {
+            {                
+
                 dot = $"\rgroup_" + Id + " ["
                    + "\rshape = plaintext"
                    + "\rlabel =<"
@@ -270,32 +245,34 @@ namespace DatabaseEngine
 
                 dot += "</tr></table>";
                 dot += ">]";
-            }
-            else
-            {
-                dot = $"\rgroup_" + Id + " ["
-                   + "\rshape = plaintext"
-                   + "\rlabel = <No values>]";
-            }
 
-            if (Pointers.Count() > 0)
-            {
                 string rank = "";
-                foreach (Pointer pointer in Pointers)
-                {
-                    BPlusTreeNode node = ReadNode(pointer);
 
-                    if (node != null)
+                for (int i = 0; i < Values.Count; i++)
+                {
+                    if (i == 0 && Values[i].LeftPointer != null)
                     {
+                        BPlusTreeNode node = ReadNode(Values[i].LeftPointer);
+
                         dot += node.ToDot();
                         rank += " group_" + node.Id;
                         dot += "\rgroup_" + Id + " -> group_" + node.Id;
                     }
-                    else
+
+                    if (Values[i].Pointer != null)
                     {
-                        string group = "data_" + pointer.PageNumber + "_" + pointer.Index;
+                        string group = "data_" + Values[i].Pointer.PageNumber + "_" + Values[i].Pointer.Index;
                         dot += "\r" + group;
                         dot += "\rgroup_" + Id + " -> " + group;
+                    }
+
+                    if (Values[i].RightPointer != null)
+                    {
+                        BPlusTreeNode node = ReadNode(Values[i].RightPointer);
+
+                        dot += node.ToDot();
+                        rank += " group_" + node.Id;
+                        dot += "\rgroup_" + Id + " -> group_" + node.Id;
                     }
                 }
 
@@ -304,6 +281,12 @@ namespace DatabaseEngine
                     rank = "{rank=same " + rank + "}";
                     dot += "\r" + rank;
                 }
+            }
+            else
+            {
+                dot = $"\rgroup_" + Id + " ["
+                   + "\rshape = plaintext"
+                   + "\rlabel = <No values>]";
             }
 
             if (Sibling != null)
