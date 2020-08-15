@@ -129,5 +129,10 @@ namespace DatabaseEngine
         {
             return Records[0];
         }
+
+        public CustomTuple Find(int index)
+        {
+            return Records[index];
+        }
     }
 }

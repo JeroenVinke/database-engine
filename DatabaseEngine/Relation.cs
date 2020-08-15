@@ -7,7 +7,7 @@ namespace DatabaseEngine
     public class TableDefinition : Relation
     {
         public string Name { get; set; }
-        public int Id { get; internal set; }
+        public string ClusteredIndex { get; set; }
         public int MaxRecordSize
         {
             get
@@ -19,6 +19,7 @@ namespace DatabaseEngine
 
     public class Relation : List<AttributeDefinition>
     {
+        public int Id { get; internal set; }
     }
 
     public class AttributeDefinition

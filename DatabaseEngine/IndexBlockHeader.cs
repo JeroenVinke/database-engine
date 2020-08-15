@@ -2,6 +2,8 @@
 {
     public class IndexBlockHeader : BlockHeader
     {
+        public override BlockType Type => BlockType.Index;
+
         public IndexBlockHeader(BlockBuffer buffer)
             : base(buffer)
         {
@@ -13,10 +15,7 @@
 
         public static BlockHeader CreateIndexHeader(BlockBuffer buffer)
         {
-            BlockHeader header = new DataBlockHeader(buffer);
-
-            ushort offsetCount = ReadOffsetCount(buffer);
-            header.ReadOffsets(buffer, offsetCount);
+            BlockHeader header = new IndexBlockHeader(buffer);
 
             return header;
         }

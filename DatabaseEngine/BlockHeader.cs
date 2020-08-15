@@ -5,44 +5,27 @@ namespace DatabaseEngine
 {
     public abstract class BlockHeader
     {
-        public List<Offset> Offsets = new List<Offset>();
-        public BlockType Type
-        {
-            get
-            {
-                return this is DataBlockHeader ? BlockType.Data : BlockType.Index;
-            }
-        }
+        public List<Offset> Offsets { get; set; } = new List<Offset>();
+        public abstract BlockType Type { get; }
         public BlockBuffer Buffer { get; set; }
 
         public BlockHeader(BlockBuffer buffer)
         {
             Buffer = buffer;
+
+            buffer.ReadByte(); // type
+            ReadCustomHeaderFromBuffer(buffer);
+            ushort offsetCount = ReadOffsetCount(buffer);
+            ReadOffsets(buffer, offsetCount);
         }
 
         public BlockHeader()
         {
         }
 
-        public static BlockHeader CreateHeader(BlockBuffer buffer)
+        private void ReadOffsets(BlockBuffer buffer, ushort offsetCount)
         {
-            BlockType type = (BlockType)(int)buffer.ReadByte();
-
-            if (type == BlockType.Index)
-            {
-                return IndexBlockHeader.CreateIndexHeader(buffer);
-            }
-            else if(type == BlockType.Data)
-            {
-                return DataBlockHeader.CreateDataHeader(buffer);
-            }
-
-            return null;
-        }
-
-        internal void ReadOffsets(BlockBuffer buffer, ushort offsetCount)
-        {
-            for (int i = 2; i < (offsetCount * 2) + 2; i++)
+            for (int i = 0; i < offsetCount; i++)
             {
                 ushort offsetShort = BitConverter.ToUInt16(buffer.ReadBytes(2), 0);
                 Offset offset = new Offset()
@@ -53,28 +36,34 @@ namespace DatabaseEngine
             }
         }
 
-        public static ushort ReadOffsetCount(BlockBuffer buffer)
+        private static ushort ReadOffsetCount(BlockBuffer buffer)
         {
             return BitConverter.ToUInt16(buffer.ReadBytes(2), 0);
         }
 
-        internal IEnumerable<byte> ToBytes()
+        public IEnumerable<byte> ToBytes()
         {
             List<byte> bytes = new List<byte>();
             bytes.Add((byte)Type);
+            bytes.AddRange(GetCustomHeaderBytes());
+            bytes.AddRange(BitConverter.GetBytes((ushort)Offsets.Count));
 
-            int i = 0;
             foreach (Offset offset in Offsets)
             {
                 byte[] offsetBytes = offset.GetOffsetInBytes();
-                for (int ii = 0; ii < offsetBytes.Length; ii++)
-                {
-                    bytes[i + ii] = offsetBytes[ii];
-                }
-                i += 2;
+                bytes.AddRange(offsetBytes);
             }
 
             return bytes.ToArray();
+        }
+
+        protected virtual byte[] GetCustomHeaderBytes()
+        {
+            return new byte[0];
+        }
+
+        protected virtual void ReadCustomHeaderFromBuffer(BlockBuffer buffer)
+        {
         }
     }
 }

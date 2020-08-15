@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 
 namespace DatabaseEngine
 {
@@ -35,6 +36,22 @@ namespace DatabaseEngine
             }
 
             return true;
+        }
+
+        internal CustomTuple WithEntries(object[] tuple)
+        {
+            foreach(object obj in tuple)
+            {
+                Add(obj);
+            }
+
+            return this;
+        }
+
+        internal object GetValueFor(string v)
+        {
+            int index = Entries.IndexOf(Entries.First(x => x.AttributeDefinition.Name == v));
+            return (int)Entries[index].Value;
         }
 
         public void Add(object value)

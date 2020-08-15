@@ -1,102 +1,86 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace DatabaseEngine
 {
     public class Program
     {
 
-        public static List<TableDefinition> Tables = new List<TableDefinition>();
+        public static List<TableDefinition> TableDefinitions = new List<TableDefinition>();
+        public static List<Table> Tables = new List<Table>();
 
+        public static string StorageFilePath = $"{Directory.GetCurrentDirectory()}\\data.storage";
+        public static TableDefinition ProductsTableDefinition;
 
         unsafe static void Main(string[] args)
         {
-            StorageFile storageFile = new StorageFile($"{Directory.GetCurrentDirectory()}\\data.storage");
+            File.Delete(StorageFilePath);
 
-            Pointer dataBlock1 = storageFile.GetFreeBlock();
-
-            BPlusTreeNode root = new BPlusTreeNode(storageFile.GetFreeBlock());
-            root.IsLeaf = true;
-            root.StorageFile = storageFile;
-            root.AddValue(10, new Pointer(dataBlock1.PageNumber, 1));
-            root.AddValue(20, new Pointer(dataBlock1.PageNumber, 2));
-            root.AddValue(30, new Pointer(dataBlock1.PageNumber, 3));
-            root.AddValue(40, new Pointer(dataBlock1.PageNumber, 4));
-            root.AddValue(50, new Pointer(dataBlock1.PageNumber, 5));
-            root.AddValue(60, new Pointer(dataBlock1.PageNumber, 6));
-            root.AddValue(70, new Pointer(dataBlock1.PageNumber, 7));
-            root.AddValue(80, new Pointer(dataBlock1.PageNumber, 8));
-            root.AddValue(90, new Pointer(dataBlock1.PageNumber, 9));
-            root.AddValue(100, new Pointer(dataBlock1.PageNumber, 10));
-
-            Pointer dataPointer = root.Find(40);
-
-            string s = root.ToDot();
-
-
-            //Block storageBlock = CreateStorageBlock();
-            //Block indexBlock = CreateRootBlock();
-            //Block branchBlock = CreateBranchBlock();
-
-            ;
-        }
-
-        //private static Block CreateBranchBlock()
-        //{
-        //    Block branchBlock = new Block();
-        //    branchBlock.Type = BlockType.Branch;
-
-        //    branchBlock.AddRecord(new IndexRecord { });
-
-        //    return branchBlock;
-        //}
-
-        //private static Block CreateRootBlock()
-        //{
-        //    Block branchBlock = new Block();
-        //    branchBlock.Type = BlockType.Root;
-
-        //    branchBlock.AddRecord(new IndexRecord { });
-
-        //    return branchBlock;
-        //}
-
-        private static Block CreateStorageBlock()
-        {
-            TableDefinition productsTable = new TableDefinition()
+            ProductsTableDefinition = new TableDefinition()
             {
                 Name = "Product",
-                Id = 1
+                Id = 1,
+                ClusteredIndex = "Id"
             };
-            productsTable.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
-            productsTable.Add(new AttributeDefinition() { Name = "Maker", Type = ValueType.String });
-            Tables.Add(productsTable);
+            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
+            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
+            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "Maker", Type = ValueType.String });
+            TableDefinitions.Add(ProductsTableDefinition);
 
-            Set products = new Set(productsTable);
-            products.Add(new object[] { 1994, "Intel" });
-            products.Add(new object[] { 2010, "AMD" });
+            StorageFile storageFile = new StorageFile(StorageFilePath);
 
-            return Block.CreateDataBlock(products);
+            foreach(TableDefinition tableDefinition in TableDefinitions)
+            {
+                Table table = new Table(storageFile, tableDefinition);
+                Tables.Add(table);
+            }
+
+            Write(Tables[0]);
+
+
+            Tables.Clear();
+            storageFile = new StorageFile(StorageFilePath);
+
+            foreach (TableDefinition tableDefinition in TableDefinitions)
+            {
+                Table table = new Table(storageFile, tableDefinition);
+                Tables.Add(table);
+            }
+
+            Read(Tables[0]);
         }
 
-        //private static void Save(Set products)
-        //{
-        //IntPtr fileHandle = OpenOrCreateFile();
+        private static void Write(Table table)
+        {
+            StorageFile storageFile = table.StorageFile;
 
-        //Block block = Block.CreateFromSet(products);
-        //block.Write(fileHandle);
+            table.Insert(1, new object[] { 1, 1994, "Intel" });
+            table.Insert(2, new object[] { 2, 2010, "AMD" });
+            table.Insert(4, new object[] { 4, 2020, "AMD" });
+            table.Insert(3, new object[] { 3, 2015, "Intel" });
 
-        //fileHandle = OpenOrCreateFile();
-        //Block readBlock = Block.ReadBlock(fileHandle, 0, (TableDefinition)products.Relation);
-        //Set readProducts = readBlock.GetSet();
+            IEnumerable<BPlusTreeNode> dirtyNodes = table.RootBTreeNode.GetDirty();
 
-        //int count = readProducts.Count();
-        //}
+            storageFile.Write();
 
+            foreach (BPlusTreeNode dirtyNode in dirtyNodes)
+            {
+                dirtyNode.Write();
+            }
+
+            //string s = root.ToDot();
+        }
+
+        private static void Read(Table table)
+        {
+            Pointer dataPointer1 = table.RootBTreeNode.Find(3);
+
+            DataBlock block = table.StorageFile.ReadBlock(dataPointer1.PageNumber) as DataBlock;
+
+            Set set = block.GetSet();
+
+            CustomTuple record = set.Find(dataPointer1.Index);
+        }
     }
 
     public enum NativeFileAccess : uint

@@ -1,31 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DatabaseEngine
+﻿namespace DatabaseEngine
 {
     public class Pointer
     {
         public int PageNumber { get; set; }
         public int Index { get; set; }
+        public short Short
+        {
+            get
+            {
+                return (short)((PageNumber << 8) ^ Index);
+            }
+        }
 
         public Pointer(int pageNumber, int index)
         {
-
             PageNumber = pageNumber;
             Index = index;
         }
 
-        public long GetPointerAsLong()
+        public Pointer(short value)
         {
-            return (PageNumber << 4) ^ Index;
-        }
+            PageNumber = (int)((value >> 8));
 
-        public static Pointer GetPointerFromLong(long value)
-        {
-            Pointer pointer = new Pointer((int)((value >> 32) & 0x0000FFFF), (int)(value & 0x0000FFFF));
-
-            return pointer;
+            Index = (int)(value & 0x00FF);
         }
     }
 }

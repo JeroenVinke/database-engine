@@ -8,7 +8,7 @@ namespace DatabaseEngine
     {
         private StorageFile _storageFile;
 
-        public int FirstFreeBlock { get; set; } = 0;
+        public int FirstFreeBlock { get; set; } = 1;
 
         public FileHeader(StorageFile storageFile)
         {
@@ -16,12 +16,21 @@ namespace DatabaseEngine
 
             BlockBuffer buffer = Read();
             FirstFreeBlock = buffer.ReadByte();
-        }
 
+            if (FirstFreeBlock == 0)
+            {
+                FirstFreeBlock = 1;
+            }
+        }
 
         private BlockBuffer Read()
         {
-            return _storageFile.GetBlockBytes(StorageFile.HeaderBlock);
+            return new BlockBuffer(_storageFile.GetBlockBytes(StorageFile.HeaderBlock));
+        }
+
+        public byte[] ToBytes()
+        {
+            return BitConverter.GetBytes(FirstFreeBlock);
         }
     }
 }
