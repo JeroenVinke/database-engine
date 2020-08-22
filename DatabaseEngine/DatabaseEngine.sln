@@ -3,9 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseEngine", "DatabaseEngine.csproj", "{4531F297-5A28-42DC-A84A-16983F2F193F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseEngine", "DatabaseEngine.csproj", "{4531F297-5A28-42DC-A84A-16983F2F193F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseEngine.Tests", "..\DatabaseEngine.Tests\DatabaseEngine.Tests.csproj", "{378D6C4D-FA65-4F72-925C-838978B32FA4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseEngine.Tests", "..\DatabaseEngine.Tests\DatabaseEngine.Tests.csproj", "{378D6C4D-FA65-4F72-925C-838978B32FA4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LexicalAnalyer", "..\LexicalAnalyer\LexicalAnalyer.csproj", "{F26B18B3-3AEE-4E94-AFBE-1623F37C72E6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parser", "..\Parser\Parser.csproj", "{A681CEA5-62F6-461C-B138-273CF2E32345}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegularExpressionEngine", "..\RegularExpressionEngine\RegularExpressionEngine.csproj", "{C488299A-7D63-4137-A21B-5C39C3EFA857}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common", "..\Common\Common.csproj", "{7526390C-8322-4D03-858D-C740526E33C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +29,22 @@ Global
 		{378D6C4D-FA65-4F72-925C-838978B32FA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{378D6C4D-FA65-4F72-925C-838978B32FA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{378D6C4D-FA65-4F72-925C-838978B32FA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F26B18B3-3AEE-4E94-AFBE-1623F37C72E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F26B18B3-3AEE-4E94-AFBE-1623F37C72E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F26B18B3-3AEE-4E94-AFBE-1623F37C72E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F26B18B3-3AEE-4E94-AFBE-1623F37C72E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A681CEA5-62F6-461C-B138-273CF2E32345}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A681CEA5-62F6-461C-B138-273CF2E32345}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A681CEA5-62F6-461C-B138-273CF2E32345}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A681CEA5-62F6-461C-B138-273CF2E32345}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C488299A-7D63-4137-A21B-5C39C3EFA857}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C488299A-7D63-4137-A21B-5C39C3EFA857}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C488299A-7D63-4137-A21B-5C39C3EFA857}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C488299A-7D63-4137-A21B-5C39C3EFA857}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7526390C-8322-4D03-858D-C740526E33C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7526390C-8322-4D03-858D-C740526E33C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7526390C-8322-4D03-858D-C740526E33C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7526390C-8322-4D03-858D-C740526E33C3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

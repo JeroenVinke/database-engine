@@ -9,4 +9,15 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LexicalAnalyer\LexicalAnalyer.csproj" />
+    <ProjectReference Include="..\Parser\Parser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="query.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
