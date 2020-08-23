@@ -8,7 +8,8 @@ namespace DatabaseEngine
     {
         private StorageFile _storageFile;
 
-        public int FirstFreeBlock { get; set; } = 1;
+        public const int DefaultFirstBlock = 4;
+        public int FirstFreeBlock { get; set; } = DefaultFirstBlock;
 
         public FileHeader(StorageFile storageFile)
         {
@@ -19,7 +20,7 @@ namespace DatabaseEngine
 
             if (FirstFreeBlock == 0)
             {
-                FirstFreeBlock = 1;
+                FirstFreeBlock = DefaultFirstBlock;
             }
         }
 

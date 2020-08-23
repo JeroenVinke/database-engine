@@ -8,7 +8,7 @@ namespace DatabaseEngine
 
         internal byte[] GetOffsetInBytes()
         {
-            return BitConverter.GetBytes((ushort)(Bytes));
+            return BitConverter.GetBytes(Bytes);
         }
     }
 }

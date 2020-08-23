@@ -27,6 +27,8 @@ namespace DatabaseEngine
                     return System.Text.Encoding.UTF8.GetBytes((string)Value);
                 case ValueType.Integer:
                     return BitConverter.GetBytes((int)Value);
+                case ValueType.Boolean:
+                    return BitConverter.GetBytes((bool)Value);
             }
 
             return new byte[0];
@@ -47,6 +49,9 @@ namespace DatabaseEngine
                 case ValueType.Integer:
                     obj.Value = BitConverter.ToInt32(entryBytes, 0);
                     break;
+                case ValueType.Boolean:
+                    obj.Value = BitConverter.ToBoolean(entryBytes, 0);
+                    break;
             }
 
             return obj;
@@ -59,7 +64,8 @@ namespace DatabaseEngine
             new Dictionary<ValueType, CustomValueComparer>()
             {
                 { ValueType.String, new StringValueComparer() },
-                { ValueType.Integer, new IntegerValueComparer() }
+                { ValueType.Integer, new IntegerValueComparer() },
+                { ValueType.Boolean, new BooleanValueComparer() }
             };
 
         public static CustomValueComparer GetComparer(ValueType type)
@@ -86,6 +92,14 @@ namespace DatabaseEngine
         public override bool IsEqualTo(object value, object otherValue)
         {
             return (int)value == (int)otherValue;
+        }
+    }
+
+    public class BooleanValueComparer : CustomValueComparer
+    {
+        public override bool IsEqualTo(object value, object otherValue)
+        {
+            return (bool)value == (bool)otherValue;
         }
     }
 }

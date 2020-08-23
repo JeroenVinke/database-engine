@@ -17,20 +17,5 @@
                 return false;
             }
         }
-        public int Size
-        {
-            get
-            {
-                switch(Type)
-                {
-                    case ValueType.String:
-                        return 256;
-                    case ValueType.Integer:
-                        return 4;
-                }
-
-                return 0;
-            }
-        }
     }
 }

@@ -11,6 +11,29 @@ namespace DatabaseEngine
         public const int HeaderBlock = 0;
         public const int RootBlock = 1;
 
+        public enum NativeFileAccess : uint
+        {
+            GENERIC_READ = 0x80000000u,
+            GENERIC_WRITE = 0x40000000u
+        }
+
+        public enum NativeShareMode : uint
+        {
+            FILE_SHARE_READ = 0x1,
+            FILE_SHARE_WRITE = 0x2u
+        }
+
+        public enum NativeCreationDeposition : uint
+        {
+            OPEN_EXISTING = 0x3u,
+            OPEN_ALWAYS = 0x4u
+        }
+
+        public enum FileAttribute : uint
+        {
+            NORMAL = 0x80u
+        }
+
         [DllImport("kernel32.dll")]
         public static extern bool WriteFileEx(
             IntPtr hFile,
@@ -73,21 +96,11 @@ namespace DatabaseEngine
             return buffer;
         }
 
-        public Block ReadBlock(int pageNumber)
+        public Block ReadBlock(Relation relation, Pointer pageNumber)
         {
-            byte[] buffer = GetBlockBytes(pageNumber);
-            BlockType type = (BlockType)(int)new BlockBuffer(buffer).ReadByte();
+            byte[] buffer = GetBlockBytes(pageNumber.PageNumber);
 
-            if (type == BlockType.Data)
-            {
-                return Block.CreateDataBlockFromBuffer(buffer);
-            }
-            else if (type == BlockType.Index)
-            {
-                return Block.CreateIndexBlockFromBuffer(buffer);
-            }
-
-            return new EmptyBlock();
+            return new Block(relation, buffer, pageNumber);
         }
 
         public Pointer GetFreeBlock()

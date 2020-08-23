@@ -3,6 +3,7 @@ using Compiler.Parser;
 using Compiler.Parser.SyntaxTreeNodes;
 using DatabaseEngine.Commands;
 using DatabaseEngine.Operations;
+using DatabaseEngine.Relations;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,60 +13,32 @@ namespace DatabaseEngine
 {
     public class Program
     {
-
-        public static List<Relation> Relations = new List<Relation>();
-        public static List<Table> Tables = new List<Table>();
-
         public static string StorageFilePath = $"{Directory.GetCurrentDirectory()}\\data.storage";
 
         unsafe static void Main(string[] args)
         {
             File.Delete(StorageFilePath);
-
-
-            // todo: store relations on disk
-
-            TableDefinition ProductsTableDefinition = new TableDefinition()
-            {
-                Name = "Products",
-                Id = 1
-            };
-
-            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
-            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
-            ProductsTableDefinition.Add(new AttributeDefinition() { Name = "Maker", Type = ValueType.String });
-            ProductsTableDefinition.AddClusteredIndex(new List<AttributeDefinition> 
-            {
-                ProductsTableDefinition.First(x => x.Name == "Id" )
-            });
-            Relations.Add(ProductsTableDefinition);
-
             StorageFile storageFile = new StorageFile(StorageFilePath);
 
-            foreach(TableDefinition tableDefinition in Relations.Where(x => x is TableDefinition).ToList())
-            {
-                Table table = new Table(storageFile, tableDefinition);
-                Tables.Add(table);
-            }
+            RelationManager relationManager = new RelationManager(storageFile);
+            CreateProductsTableIfNotExists(relationManager);
 
-            Write(Tables[0]);
+            Write(relationManager.GetTable("Products"));
+            Read(relationManager.GetTable("Products"));
 
 
-            Tables.Clear();
-            storageFile = new StorageFile(StorageFilePath);
+            string query = File.ReadAllText("query.txt");
 
-            foreach (TableDefinition tableDefinition in Relations.Where(x => x is TableDefinition).ToList())
-            {
-                Table table = new Table(storageFile, tableDefinition);
-                Tables.Add(table);
-            }
+            Command command = ParseCommand(relationManager, query);
 
-            Read(Tables[0]);
+            QueryPlan plan = new QueryPlan(command);
 
+            List<CustomTuple> result = plan.Execute();
+        }
 
-            string input = File.ReadAllText("query.txt");
-
-            LexicalAnalyzer analyzer = new LexicalAnalyzer(LexicalLanguage.GetLanguage(), input);
+        public static Command ParseCommand(RelationManager relationManager, string query)
+        {
+            LexicalAnalyzer analyzer = new LexicalAnalyzer(LexicalLanguage.GetLanguage(), query);
             BottomUpParser parser = new BottomUpParser(analyzer);
 
             parser.Parse();
@@ -75,7 +48,7 @@ namespace DatabaseEngine
 
             if (command is SelectASTNode selectCommandAST)
             {
-                Table table = Tables.FirstOrDefault(x => x.TableDefinition.Name.ToLower() == selectCommandAST.From.Identifier.Identifier.ToLower());
+                Table table = relationManager.GetTable(selectCommandAST.From.Identifier.Identifier);
 
                 //Set result = IndexSearch(table, null);
 
@@ -85,29 +58,32 @@ namespace DatabaseEngine
                     Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition)
                 };
 
-                QueryPlan plan = new QueryPlan(selectCommand);
-
-                List<CustomTuple> result = plan.Execute();
+                return selectCommand;
             }
+
+            return null;
         }
 
-        public static Relation GetOrCreateIndexRelation(ValueType type)
+        private static void CreateProductsTableIfNotExists(RelationManager relationManager)
         {
-            int id = type == ValueType.Integer ? 2 : 3;
-
-            if (Relations.Any(x => x.Id == id))
+            if (!relationManager.TableExists("Products"))
             {
-                return Relations.First(x => x.Id == id);
+                TableDefinition table = new TableDefinition()
+                {
+                    Name = "Products",
+                    Id = 1
+                };
+
+                table.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
+                table.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
+                table.Add(new AttributeDefinition() { Name = "Maker", Type = ValueType.String });
+                table.AddClusteredIndex(new List<AttributeDefinition>
+                {
+                    table.First(x => x.Name == "Id" )
+                });
+
+                relationManager.CreateTable(table);
             }
-
-            Relation indexRelation = new Relation() { Name = "IndexRelation", Id = id };
-            indexRelation.Add(new AttributeDefinition() { Name = "Value", Type = type });
-            indexRelation.Add(new AttributeDefinition() { Name = "LeftPointer", Type = ValueType.Integer });
-            indexRelation.Add(new AttributeDefinition() { Name = "ValuePointer", Type = ValueType.Integer });
-            indexRelation.Add(new AttributeDefinition() { Name = "RightPointer", Type = ValueType.Integer });
-            Relations.Add(indexRelation);
-
-            return indexRelation;
         }
 
         public static Condition BooleanExpressionToCondition(TableDefinition tableDefinition, BooleanExpressionASTNode expr)
@@ -184,8 +160,6 @@ namespace DatabaseEngine
 
         private static void Write(Table table)
         {
-            StorageFile storageFile = table.StorageFile;
-
             table.Insert(1, new object[] { 1, 1994, "Intel" });
             table.Insert(2, new object[] { 2, 2010, "AMD" });
             table.Insert(4, new object[] { 4, 2020, "AMD" });
@@ -198,36 +172,13 @@ namespace DatabaseEngine
 
         private static void Read(Table table)
         {
-            Pointer dataPointer1 = table.RootBTreeNode.Find(3);
+            Pointer dataPointer1 = table.Find(3);
 
-            DataBlock block = table.StorageFile.ReadBlock(dataPointer1.PageNumber) as DataBlock;
+            Block block = table.StorageFile.ReadBlock(table.TableDefinition, dataPointer1) as Block;
 
             Set set = block.GetSet();
 
             CustomTuple record = set.Find(dataPointer1.Index);
         }
-    }
-
-    public enum NativeFileAccess : uint
-    {
-        GENERIC_READ = 0x80000000u,
-        GENERIC_WRITE = 0x40000000u
-    }
-
-    public enum NativeShareMode : uint
-    {
-        FILE_SHARE_READ = 0x1,
-        FILE_SHARE_WRITE = 0x2u
-    }
-
-    public enum NativeCreationDeposition : uint
-    {
-        OPEN_EXISTING = 0x3u,
-        OPEN_ALWAYS = 0x4u
-    }
-
-    public enum FileAttribute : uint
-    {
-        NORMAL = 0x80u
     }
 }

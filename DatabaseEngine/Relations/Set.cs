@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine
 {
-    public class Set
+    public class Set : IEnumerable<CustomTuple>
     {
         public Relation Relation { get; set; }
         public List<CustomTuple> Records { get; set; }
@@ -133,6 +134,16 @@ namespace DatabaseEngine
         public CustomTuple Find(int index)
         {
             return Records[index];
+        }
+
+        public IEnumerator<CustomTuple> GetEnumerator()
+        {
+            return Records.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
         }
     }
 }

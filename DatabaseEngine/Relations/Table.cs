@@ -1,18 +1,23 @@
-﻿using System;
+﻿using DatabaseEngine.Relations;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine
 {
     public class Table
     {
-        public IBPlusTreeNode RootBTreeNode { get; set; }
+        private IBPlusTreeNode _rootBTreeNode;
+        private Block _rootBlock;
         public StorageFile StorageFile { get; set; }
         public TableDefinition TableDefinition { get; set; }
+        private RelationManager _relationManager;
 
-        public Table(StorageFile storageFile, TableDefinition tableDefinition)
+        public Table(RelationManager relationManager, StorageFile storageFile, TableDefinition tableDefinition, Pointer rootBlock)
         {
             StorageFile = storageFile;
             TableDefinition = tableDefinition;
+            _relationManager = relationManager;
 
             if (tableDefinition.HasClusteredIndex())
             {
@@ -20,50 +25,73 @@ namespace DatabaseEngine
 
                 if (index.Columns.Any(x => x.Type == ValueType.String))
                 {
-                    RootBTreeNode = new BPlusTreeNode<string>(Program.GetOrCreateIndexRelation(ValueType.String), storageFile, new Pointer(StorageFile.RootBlock, 0));
+                    _rootBTreeNode = new BPlusTreeNode<string>(_relationManager.GetRelation(Constants.StringIndexRelationId), storageFile, rootBlock);
                 }
                 else if(index.Columns.All(x => x.Type == ValueType.Integer))
                 {
-                    RootBTreeNode = new BPlusTreeNode<int>(Program.GetOrCreateIndexRelation(ValueType.Integer), storageFile, new Pointer(StorageFile.RootBlock, 0));
+                    _rootBTreeNode = new BPlusTreeNode<int>(_relationManager.GetRelation(Constants.IntIndexRelationId), storageFile, rootBlock);
                 }
 
-                RootBTreeNode.IsRoot = true;
-                RootBTreeNode.ReadNode();
+                _rootBTreeNode.IsRoot = true;
+                _rootBTreeNode.ReadNode();
+            }
+            else
+            {
+                _rootBlock = storageFile.ReadBlock(tableDefinition, rootBlock);
             }
         }
 
         public void Insert(int key, object[] entries)
         {
-            Pointer spot = RootBTreeNode.Find(key, false);
+            Pointer spot = _rootBTreeNode.Find(key, false);
 
-            DataBlock dataBlock;
+            Block dataBlock;
 
             if (spot == null)
             {
                 Pointer freeBlock = StorageFile.GetFreeBlock();
-                dataBlock = new DataBlock();
-                dataBlock.Relation = TableDefinition;
+                dataBlock = new Block(TableDefinition);
                 spot = freeBlock;
             }
             else
             {
-                dataBlock = StorageFile.ReadBlock(spot.PageNumber) as DataBlock;
+                dataBlock = StorageFile.ReadBlock(TableDefinition, spot) as Block;
             }
 
             CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
             // if block has room, else create new block
             int index = dataBlock.AddRecord(tuple.ToRecord());
 
-            RootBTreeNode.AddValue(key, new Pointer(spot.PageNumber, index));
+            _rootBTreeNode.AddValue(key, new Pointer(spot.PageNumber, index));
 
             StorageFile.WriteBlock(spot.PageNumber, dataBlock.ToBytes());
-            // write;
+        }
+
+        public void Insert(object[] entries)
+        {
+            CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
+            _rootBlock.AddRecord(tuple.ToRecord());
+
+            StorageFile.WriteBlock(_rootBlock.Page.PageNumber, _rootBlock.ToBytes());
         }
 
         internal void Write()
         {
             StorageFile.Write();
-            RootBTreeNode.WriteTree();
+            _rootBTreeNode?.WriteTree();
+        }
+
+        public Set All()
+        {
+            Block block = StorageFile.ReadBlock(TableDefinition, _rootBlock.Page);
+            Set set = block.GetSet();
+
+            return set;
+        }
+
+        public Pointer Find(object id)
+        {
+            return _rootBTreeNode.Find(id);
         }
     }
 }

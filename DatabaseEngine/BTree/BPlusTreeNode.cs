@@ -47,26 +47,16 @@ namespace DatabaseEngine
 
             Pointer pointer = new Pointer(pointerValue);
 
-            Block block = StorageFile.ReadBlock(pointer.PageNumber);
-
-            if (block.Header.Type == BlockType.Data)
-            {
-                return null;
-            }
+            Block block = StorageFile.ReadBlock(Relation, pointer);
 
             return GetNodeFromBlock(pointer, block);
         }
 
         public void ReadNode()
         {
-            Block block = StorageFile.ReadBlock(Page.PageNumber);
+            Block block = StorageFile.ReadBlock(Relation, Page);
 
-            if (block.Header.Type == BlockType.Data)
-            {
-                return;
-            }
-
-            if (block.Header.Type == BlockType.Free)
+            if (block.Header.Empty)
             {
                 IsLeaf = true;
                 return;
@@ -89,7 +79,7 @@ namespace DatabaseEngine
         {
             if (Block == null)
             {
-                Block = new IndexBlock();
+                Block = new Block(Relation);
             }
 
             foreach (BPlusTreeNodeValue<TKeyType> value in Values)
@@ -161,13 +151,13 @@ namespace DatabaseEngine
             {
                 CustomTuple tuple = new CustomTuple(Relation).FromRecord(record);
 
-                int leftPointer = (int)tuple.GetValueFor("LeftPointer");
-                int valuePointer = (int)tuple.GetValueFor("ValuePointer");
-                int rightPointer = (int)tuple.GetValueFor("RightPointer");
+                int leftPointer = tuple.GetValueFor<int>("LeftPointer");
+                int valuePointer = tuple.GetValueFor<int>("ValuePointer");
+                int rightPointer = tuple.GetValueFor<int>("RightPointer");
 
                 BPlusTreeNodeValue<TKeyType> value = new BPlusTreeNodeValue<TKeyType>
                 {
-                    Value = (TKeyType)tuple.GetValueFor("Value")
+                    Value = tuple.GetValueFor<TKeyType>("Value")
                 };
 
                 if (leftPointer >= 0)

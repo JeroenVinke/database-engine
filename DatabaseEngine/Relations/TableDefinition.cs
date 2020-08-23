@@ -6,16 +6,9 @@ namespace DatabaseEngine
 {
     public class TableDefinition : Relation
     {
-        private List<Index> Indexes { get; set; } = new List<Index>();
-        public int MaxRecordSize
-        {
-            get
-            {
-                return this.Sum(x => x.Size);
-            }
-        }
+        public List<Index> Indexes { get; set; } = new List<Index>();
 
-        internal void AddClusteredIndex(List<AttributeDefinition> columns)
+        public void AddClusteredIndex(List<AttributeDefinition> columns)
         {
             if (HasClusteredIndex())
             {
@@ -29,12 +22,12 @@ namespace DatabaseEngine
             });
         }
 
-        internal Index GetClusteredIndex()
+        public Index GetClusteredIndex()
         {
             return Indexes.First(x => x.Clustered);
         }
 
-        internal void AddNonClusteredIndex(List<AttributeDefinition> columns)
+        public void AddNonClusteredIndex(List<AttributeDefinition> columns)
         {
             Indexes.Add(new Index
             {
@@ -43,9 +36,14 @@ namespace DatabaseEngine
             });
         }
 
-        internal bool HasClusteredIndex()
+        public bool HasClusteredIndex()
         {
             return Indexes.Any(x => x.Clustered);
+        }
+
+        public IEnumerable<Index> GetIndexes()
+        {
+            return Indexes;
         }
     }
 }

@@ -48,10 +48,10 @@ namespace DatabaseEngine
             return this;
         }
 
-        public object GetValueFor(string columnName)
+        public T GetValueFor<T>(string columnName)
         {
             int index = Entries.IndexOf(Entries.First(x => x.AttributeDefinition.Name == columnName));
-            return (int)Entries[index].Value;
+            return (T)Entries[index].Value;
         }
 
         public CustomTuple Add(object value)
@@ -72,24 +72,13 @@ namespace DatabaseEngine
             int ii = 0;
             foreach (AttributeDefinition attributeDefinition in Relation)
             {
-                if (attributeDefinition.IsFixedSize)
-                {
-                    byte[] entryBytes = record.Content.Skip(i).Take(attributeDefinition.Size).ToArray();
+                Offset nextOffset = record.Offsets.Count > ii + 1 ? record.Offsets[ii + 1] : new Offset { Bytes = record.Content.Length };
+                byte[] entryBytes = record.Content.Skip(i).Take(nextOffset.Bytes - record.Offsets[ii].Bytes).ToArray();
 
-                    Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
+                Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
 
-                    i += attributeDefinition.Size;
-                }
-                else
-                {
-                    Offset nextOffset = record.Offsets.Count > i + 1 ? record.Offsets[i + 1] : new Offset { Bytes = record.Content.Length - 1 };
-                    byte[] entryBytes = record.Content.Skip(i).Take(nextOffset.Bytes - record.Offsets[ii].Bytes).ToArray();
-
-                    Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
-
-                    i += entryBytes.Length;
-                    ii++;
-                }
+                i += entryBytes.Length;
+                ii++;
             }
 
             return this;
@@ -97,19 +86,13 @@ namespace DatabaseEngine
 
         internal Record ToRecord()
         {
-            Record record = new Record
-            {
-                SchemaPointer = Relation.Id
-            };
+            Record record = new Record();
 
             List<byte> bytes = new List<byte>();
             int i = 0;
             foreach (CustomObject entry in Entries)
             {
-                if (!entry.AttributeDefinition.IsFixedSize)
-                {
-                    record.Offsets.Add(new Offset() { Bytes = i });
-                }
+                record.Offsets.Add(new Offset() { Bytes = i });
                 byte[] entryBytes = entry.ToBytes();
                 i += entryBytes.Length;
                 bytes.AddRange(entryBytes);
