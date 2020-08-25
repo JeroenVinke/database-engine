@@ -22,18 +22,43 @@ namespace DatabaseEngine
 
             RelationManager relationManager = new RelationManager(storageFile);
             CreateProductsTableIfNotExists(relationManager);
+            CreateMakersTableIfNotExists(relationManager);
+            
+            WriteProducers(relationManager.GetTable("Producers"));
+            ReadProducers(relationManager.GetTable("Producers"));
 
-            Write(relationManager.GetTable("Products"));
-            Read(relationManager.GetTable("Products"));
+            WriteProducts(relationManager.GetTable("Products"));
+            ReadProducts(relationManager.GetTable("Products"));
 
 
-            string query = File.ReadAllText("query.txt");
+            string query = "select * from producers join products on producers.name == products.producer where Name == \"AMD\" ";
+            while (!string.IsNullOrEmpty(query))
+            {
+                Console.WriteLine("Query: " + query);
 
-            Command command = ParseCommand(relationManager, query);
+                Command command = ParseCommand(relationManager, query);
 
-            QueryPlan plan = new QueryPlan(command);
+                QueryPlan plan = new QueryPlan(command);
 
-            List<CustomTuple> result = plan.Execute();
+                List<CustomTuple> result = plan.Execute();
+
+                foreach(CustomTuple tuple in result)
+                {
+                    List<string> s = new List<string>();
+
+                    foreach(CustomObject entry in tuple.Entries)
+                    {
+                        s.Add(entry.Value.ToString());
+                    }
+
+                    Console.WriteLine(string.Join("|", s));
+                }
+
+                Console.WriteLine("Enter new query....");
+                query = Console.ReadLine();
+            }
+
+            
         }
 
         public static Command ParseCommand(RelationManager relationManager, string query)
@@ -55,13 +80,44 @@ namespace DatabaseEngine
                 SelectCommand selectCommand = new SelectCommand
                 {
                     Table = table,
-                    Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition)
+                    Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition),
+                    Join = JoinNodeToJoin(relationManager, table, selectCommandAST.Join)
                 };
 
                 return selectCommand;
             }
 
             return null;
+        }
+
+        private static Join JoinNodeToJoin(RelationManager relationManager, Table leftTable, JoinASTNode join)
+        {
+            Table rightTable = relationManager.GetTable(join.TargetTable.Identifier);
+
+            return new Join
+            {
+                LeftTable = leftTable,
+                RightTable = rightTable,
+                LeftColumn = leftTable.TableDefinition.GetAttributeByName(join.LeftColumn.Identifier.Split(".")[1]),
+                RightColumn = rightTable.TableDefinition.GetAttributeByName(join.RightColumn.Identifier.Split(".")[1])
+            };
+        }
+
+        private static void CreateMakersTableIfNotExists(RelationManager relationManager)
+        {
+            if (!relationManager.TableExists("Producers"))
+            {
+                TableDefinition table = new TableDefinition()
+                {
+                    Name = "Producers",
+                    Id = 2
+                };
+
+                table.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
+                table.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
+
+                relationManager.CreateTable(table);
+            }
         }
 
         private static void CreateProductsTableIfNotExists(RelationManager relationManager)
@@ -76,11 +132,15 @@ namespace DatabaseEngine
 
                 table.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
-                table.Add(new AttributeDefinition() { Name = "Maker", Type = ValueType.String });
+                table.Add(new AttributeDefinition() { Name = "Producer", Type = ValueType.String });
                 table.AddClusteredIndex(new List<AttributeDefinition>
                 {
                     table.First(x => x.Name == "Id" )
-                });
+                }, 0);
+                table.AddNonClusteredIndex(new List<AttributeDefinition>
+                {
+                    table.First(x => x.Name == "Producer")
+                }, 0);
 
                 relationManager.CreateTable(table);
             }
@@ -123,42 +183,20 @@ namespace DatabaseEngine
             return null;
         }
 
-        //private static Set IndexSearch(Table table, BooleanExpressionASTNode expression)
-        //{
-        //    IBPlusTreeNode tree = table.RootBTreeNode;
 
-        //    return IndexSearch(table, new Set(table.TableDefinition), tree);
-        //}
+        private static void WriteProducers(Table table)
+        {
+            table.Insert(new object[] { 1, "Intel" });
+            table.Insert(new object[] { 2, "AMD" });
 
-        //private static Set IndexSearch(Table table, Set result, IBPlusTreeNode node)
-        //{
-        //    foreach (BPlusTreeNodeValue treeNodeValue in node.Values)
-        //    {
-        //        if (treeNodeValue.LeftPointer != null)
-        //        {
-        //            IndexSearch(table, result, node.ReadNode(treeNodeValue.LeftPointer.Short));
-        //        }
+            table.Write();
+        }
 
-        //        if (treeNodeValue.Pointer != null)
-        //        {
-        //            DataBlock block = table.StorageFile.ReadBlock(treeNodeValue.Pointer.PageNumber) as DataBlock;
+        private static void ReadProducers(Table table)
+        {
+        }
 
-        //            Set set = block.GetSet();
-
-        //            CustomTuple record = set.Find(treeNodeValue.Pointer.Index);
-        //            result.Add(record);
-        //        }
-
-        //        if (treeNodeValue.RightPointer != null)
-        //        {
-        //            IndexSearch(table, result, node.ReadNode(treeNodeValue.RightPointer.Short));
-        //        }
-        //    }
-
-        //    return result;
-        //}
-
-        private static void Write(Table table)
+        private static void WriteProducts(Table table)
         {
             table.Insert(1, new object[] { 1, 1994, "Intel" });
             table.Insert(2, new object[] { 2, 2010, "AMD" });
@@ -170,13 +208,11 @@ namespace DatabaseEngine
             //string s = root.ToDot();
         }
 
-        private static void Read(Table table)
+        private static void ReadProducts(Table table)
         {
             Pointer dataPointer1 = table.Find(3);
 
-            Block block = table.StorageFile.ReadBlock(table.TableDefinition, dataPointer1) as Block;
-
-            Set set = block.GetSet();
+            Set set = table.All();
 
             CustomTuple record = set.Find(dataPointer1.Index);
         }

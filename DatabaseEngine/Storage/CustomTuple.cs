@@ -48,9 +48,27 @@ namespace DatabaseEngine
             return this;
         }
 
+        internal bool Joins(CustomTuple rightTuple, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
+        {
+            CustomObject left = GetEntryFor(leftJoinColumn.Name);
+            CustomObject right = rightTuple.GetEntryFor(rightJoinColumn.Name);
+
+            if (left.IsEqualTo(right))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public CustomObject GetEntryFor(string columnName)
+        {
+            return Entries.First(x => x.AttributeDefinition.Name == columnName);
+        }
+
         public T GetValueFor<T>(string columnName)
         {
-            int index = Entries.IndexOf(Entries.First(x => x.AttributeDefinition.Name == columnName));
+            int index = Entries.IndexOf(GetEntryFor(columnName));
             return (T)Entries[index].Value;
         }
 

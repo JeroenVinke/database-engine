@@ -3,9 +3,9 @@
 namespace DatabaseEngine
 {
     [DebuggerDisplay("BPlusTreeNodeValue: {Value}")]
-    public class BPlusTreeNodeValue<TKeyType> : IBPlusTreeNodeValue
+    public class BPlusTreeNodeValue
     {
-        public TKeyType Value { get; set; }
+        public object Value { get; set; }
         public Pointer Pointer { get; set; }
         public Pointer LeftPointer { get; set; }
         public Pointer RightPointer { get; set; }

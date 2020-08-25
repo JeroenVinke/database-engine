@@ -10,9 +10,25 @@ namespace DatabaseEngine
         public BlockHeader Header { get; set; }
         public List<Record> Records { get; set; } = new List<Record>();
 
-        public Block NextBlock { get; set; } // todo: overflow
+        private Block _nextBlock;
+        public Block NextBlock
+        { 
+            get
+            {
+                if (_nextBlock == null && Header.NextBlockId != null && Header.NextBlockId.Short > 0)
+                {
+                    _nextBlock = _storageFile.ReadBlock(Relation, Header.NextBlockId);
+                }
+
+                return _nextBlock;
+            }
+        }
+
+        private StorageFile _storageFile;
 
         public const int BlockSize = 4096;
+        private int _usedBytes;
+
         private Relation _relation;
         public Relation Relation
         {
@@ -24,8 +40,9 @@ namespace DatabaseEngine
             }
         }
 
-        public Block(Relation relation, byte[] buffer, Pointer pageNumber)
+        public Block(StorageFile storageFile, Relation relation, byte[] buffer, Pointer pageNumber)
         {
+            _storageFile = storageFile;
             Page = pageNumber;
             Header = new BlockHeader(new BlockBuffer(buffer));
             Relation = relation;
@@ -59,10 +76,13 @@ namespace DatabaseEngine
 
                 Records = records.Cast<Record>().ToList();
             }
+
+            _usedBytes = Header.Size + Records.Sum(x => x.Length);
         }
 
-        public Block(Relation relation)
+        public Block(StorageFile storageFile, Relation relation)
         {
+            _storageFile = storageFile;
             Header = new BlockHeader();
             Relation = relation;
         }
@@ -128,6 +148,15 @@ namespace DatabaseEngine
         {
             Header.Empty = false;
 
+            if (NextBlock != null || (BlockSize - _usedBytes) < (record.Length + 4))
+            {
+                if (NextBlock == null)
+                {
+                    Header.NextBlockId = _storageFile.GetFreeBlock();
+                }
+                return NextBlock.AddRecord(record);
+            }
+
             int targetPosition = DetermineOffsetPositionForRecord(record);
 
             int offsetIndex;
@@ -144,6 +173,8 @@ namespace DatabaseEngine
             Header.Offsets.Insert(targetPosition, offset);
             record.OffsetInBlock = offset;
             Records.Add(record);
+
+            _usedBytes += record.Length;
             return targetPosition;
         }
 

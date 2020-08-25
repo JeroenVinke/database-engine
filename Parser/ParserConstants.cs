@@ -23,5 +23,8 @@
         public const string Where = "Where";
         public const string StringExpression = "StringExpression";
         public const string String = "String";
+        public const string OptionalWhere = "OptionalWhere";
+        public const string CommandRule = "Command";
+        public const string Join = "Join";
     }
 }

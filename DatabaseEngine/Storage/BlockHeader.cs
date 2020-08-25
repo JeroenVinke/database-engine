@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DatabaseEngine
 {
@@ -10,6 +11,7 @@ namespace DatabaseEngine
         public bool Empty { get; set; }
 
         public int RelationId { get; set; }
+        public Pointer NextBlockId { get; set; }
 
         public BlockHeader(BlockBuffer buffer)
         {
@@ -17,6 +19,7 @@ namespace DatabaseEngine
 
             Empty = BitConverter.ToInt32(buffer.ReadBytes(4)) == 0;
             RelationId = BitConverter.ToInt32(buffer.ReadBytes(4));
+            NextBlockId = new Pointer(BitConverter.ToInt32(buffer.ReadBytes(4)));
             int offsetCount = BitConverter.ToInt32(buffer.ReadBytes(4), 0);
             ReadOffsets(buffer, offsetCount);
         }
@@ -24,6 +27,8 @@ namespace DatabaseEngine
         public BlockHeader()
         {
         }
+
+        public int Size => ToBytes().Count();
 
         private void ReadOffsets(BlockBuffer buffer, int offsetCount)
         {
@@ -43,6 +48,7 @@ namespace DatabaseEngine
             List<byte> bytes = new List<byte>();
             bytes.AddRange(BitConverter.GetBytes(Empty ? 0 : 1));
             bytes.AddRange(BitConverter.GetBytes(RelationId));
+            bytes.AddRange(BitConverter.GetBytes(NextBlockId != null ? NextBlockId.Short : 0));
             bytes.AddRange(BitConverter.GetBytes(Offsets.Count));
 
             foreach (Offset offset in Offsets)

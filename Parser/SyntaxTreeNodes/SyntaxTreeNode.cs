@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Compiler.Parser
 {
@@ -18,7 +19,7 @@ namespace Compiler.Parser
         {
             string result = $"{Id}2222 [label=\"{ToString()}\"]\r\n";
 
-            foreach(SyntaxTreeNode child in GetChildren())
+            foreach(SyntaxTreeNode child in GetChildren().Where(x => x != null))
             {
                 result += $"{child.Id}2222 -> {Id}2222\r\n";
                 result += child.ToDot();

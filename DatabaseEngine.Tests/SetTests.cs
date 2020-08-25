@@ -1,3 +1,4 @@
+using Compiler.LexicalAnalyer;
 using NUnit.Framework;
 using System.Collections.Generic;
 
@@ -13,6 +14,8 @@ namespace DatabaseEngine.Tests
         [Test]
         public void Intersect()
         {
+            new LexicalAnalyzer(LexicalLanguage.GetLanguage(), "\"AMD\"").GetNextToken();
+
             TableDefinition productsTable = new TableDefinition()
             {
                 Name = "Product"

@@ -8,7 +8,7 @@ namespace DatabaseEngine
     {
         public List<Index> Indexes { get; set; } = new List<Index>();
 
-        public void AddClusteredIndex(List<AttributeDefinition> columns)
+        public void AddClusteredIndex(List<AttributeDefinition> columns, int rootPointer)
         {
             if (HasClusteredIndex())
             {
@@ -18,7 +18,8 @@ namespace DatabaseEngine
             Indexes.Add(new Index
             {
                 Clustered = true,
-                Columns = columns
+                Columns = columns,
+                RootPointer = new Pointer(rootPointer)
             });
         }
 
@@ -27,12 +28,13 @@ namespace DatabaseEngine
             return Indexes.First(x => x.Clustered);
         }
 
-        public void AddNonClusteredIndex(List<AttributeDefinition> columns)
+        public void AddNonClusteredIndex(List<AttributeDefinition> columns, int rootPointer)
         {
             Indexes.Add(new Index
             {
                 Clustered = false,
-                Columns = columns
+                Columns = columns,
+                RootPointer = new Pointer(rootPointer)
             });
         }
 
@@ -44,6 +46,16 @@ namespace DatabaseEngine
         public IEnumerable<Index> GetIndexes()
         {
             return Indexes;
+        }
+
+        internal IEnumerable<Index> NonClusteredIndexes()
+        {
+            return Indexes.Where(x => !x.Clustered);
+        }
+
+        internal AttributeDefinition GetAttributeByName(string v)
+        {
+            return this.First(x => x.Name.ToLower() == v.ToLower());
         }
     }
 }

@@ -44,14 +44,14 @@ namespace DatabaseEngine.Relations
                     if (index.GetValueFor<bool>("IsClustered"))
                     {
                         tableDefinition.AddClusteredIndex(new List<AttributeDefinition> {
-                                tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns"))
-                            });
+                            tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns")),
+                        }, index.GetValueFor<int>("RootBlock"));
                     }
                     else
                     {
                         tableDefinition.AddNonClusteredIndex(new List<AttributeDefinition> {
-                                tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns"))
-                            });
+                            tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns"))
+                        }, index.GetValueFor<int>("RootBlock"));
                     }
                 }
 
@@ -97,6 +97,7 @@ namespace DatabaseEngine.Relations
             IndexesTable.Add(new AttributeDefinition() { Name = "RelationId", Type = ValueType.Integer });
             IndexesTable.Add(new AttributeDefinition() { Name = "IsClustered", Type = ValueType.Boolean });
             IndexesTable.Add(new AttributeDefinition() { Name = "Columns", Type = ValueType.String });
+            IndexesTable.Add(new AttributeDefinition() { Name = "RootBlock", Type = ValueType.Integer });
             Relations.Add(IndexesTable);
 
             Table tablesTable = new Table(this, _storageFile, TablesTable, new Pointer(0, 0));
@@ -131,7 +132,9 @@ namespace DatabaseEngine.Relations
 
             foreach(Index index in table.GetIndexes())
             {
-                indexesTable.Insert(new object[] { table.Id, index.Clustered, string.Join("|", index.Columns.Select(x => x.Name)) });
+                index.RootPointer = index.Clustered ? new Pointer(rootBlock): _storageFile.GetFreeBlock();
+
+                indexesTable.Insert(new object[] { table.Id, index.Clustered, string.Join("|", index.Columns.Select(x => x.Name)), index.RootPointer.Short});
             }
 
             Tables.Add(new Table(this, _storageFile, table, new Pointer(rootBlock)));

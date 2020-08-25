@@ -16,6 +16,8 @@ namespace Compiler.LexicalAnalyer
             lexLanguage.Add("select#", (string value) => { return new WordToken { Type = TokenType.Select }; });
             lexLanguage.Add("where#", (string value) => { return new WordToken { Type = TokenType.Where }; });
             lexLanguage.Add("from#", (string value) => { return new WordToken { Type = TokenType.From }; });
+            lexLanguage.Add("join#", (string value) => { return new WordToken { Type = TokenType.Join }; });
+            lexLanguage.Add("on#", (string value) => { return new WordToken { Type = TokenType.On }; });
             lexLanguage.Add("(<|>|<=|>=|==|!=)#", (string value) => { return new WordToken { Type = TokenType.RelOp }; });
             lexLanguage.Add("\\|\\|#", (string value) => { return new WordToken { Type = TokenType.Or }; });
             lexLanguage.Add("&&#", (string value) => { return new WordToken { Type = TokenType.And }; });
@@ -25,12 +27,18 @@ namespace Compiler.LexicalAnalyer
             lexLanguage.Add("\\*#", (string value) => { return new WordToken { Type = TokenType.Multiplication }; });
             lexLanguage.Add("\\/#", (string value) => { return new WordToken { Type = TokenType.Division }; });
             lexLanguage.Add("(true|false)#", (string value) => { return new WordToken { Type = TokenType.Boolean }; });
-            lexLanguage.Add("\"([a-zA-Z])*\"#", (string value) => { return new WordToken { Type = TokenType.String }; });
+            lexLanguage.Add("\"([a-zA-Z])*\"#", (string value) =>
+            {
+                return new WordToken { Type = TokenType.String, Lexeme = value.Replace("\"", "") };
+            });
             lexLanguage.Add("\\(#", (string value) => { return new WordToken { Type = TokenType.ParenthesisOpen }; });
             lexLanguage.Add("\\)#", (string value) => { return new WordToken { Type = TokenType.ParenthesisClose }; });
+            lexLanguage.Add("([a-zA-Z])*.([a-zA-Z])*.#", (string value) =>
+            {
+                return new WordToken { Type = TokenType.Identifier, Lexeme = value };
+            });
             lexLanguage.Add("([a-zA-Z])+([a-zA-Z0-9])*#", (string value) =>
             {
-
                 return new WordToken { Type = TokenType.Identifier, Lexeme = value };
             });
             lexLanguage.Add("([0-9])*#", (string value) => { return new WordToken { Type = TokenType.Integer }; });

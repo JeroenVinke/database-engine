@@ -10,13 +10,20 @@ namespace DatabaseEngine
 
         public bool IsEqualTo(CustomObject otherObject)
         {
-            if (ReferenceEquals(otherObject.AttributeDefinition, AttributeDefinition))
-            {
-                CustomValueComparer comparer = Comparers.GetComparer(AttributeDefinition.Type);
-                return comparer.IsEqualTo(Value, otherObject.Value);
-            }
+            CustomValueComparer comparer = Comparers.GetComparer(AttributeDefinition.Type);
+            return comparer.IsEqualTo(Value, otherObject.Value);
+        }
 
-            return false;
+        public bool IsEqualTo(object otherValue)
+        {
+            CustomValueComparer comparer = Comparers.GetComparer(AttributeDefinition.Type);
+            return comparer.IsEqualTo(Value, otherValue);
+        }
+
+        public bool IsGreaterThan(object otherValue)
+        {
+            CustomValueComparer comparer = Comparers.GetComparer(AttributeDefinition.Type);
+            return comparer.IsGreaterThan(Value, otherValue);
         }
 
         public byte[] ToBytes()
@@ -77,26 +84,82 @@ namespace DatabaseEngine
     public abstract class CustomValueComparer
     {
         public abstract bool IsEqualTo(object value, object otherValue);
+        public abstract int Compare(object value, object otherValue);
+
+        public virtual bool IsGreaterThan(object value, object otherValue)
+        {
+            return false;
+        }
     }
 
     public class StringValueComparer : CustomValueComparer
     {
+        public override int Compare(object value, object otherValue)
+        {
+            string alphabet = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWw123456789";
+            string left = (string)value;
+            string right = (string)otherValue;
+
+            for (int i = 0; i < left.Length; i++)
+            {
+                if (right.Length > i)
+                {
+                    int indexLeft = alphabet.IndexOf(left[i]);
+                    int indexRight = alphabet.IndexOf(right[i]);
+                    if (indexRight > indexLeft)
+                    {
+                        return 1;
+                    }
+                    else if (indexLeft > indexRight)
+                    {
+                        return -1;
+                    }
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+
+            return  0;
+        }
+
         public override bool IsEqualTo(object value, object otherValue)
         {
             return string.Equals((string)value, (string)otherValue, System.StringComparison.Ordinal);
+        }
+
+        public override bool IsGreaterThan(object value, object otherValue)
+        {
+            return Compare(value, otherValue) > 0;
         }
     }
 
     public class IntegerValueComparer : CustomValueComparer
     {
+        public override int Compare(object value, object otherValue)
+        {
+            return ((int)value).CompareTo((int)otherValue);
+        }
+
         public override bool IsEqualTo(object value, object otherValue)
         {
             return (int)value == (int)otherValue;
+        }
+
+        public override bool IsGreaterThan(object value, object otherValue)
+        {
+            return Compare(value, otherValue) > 0;
         }
     }
 
     public class BooleanValueComparer : CustomValueComparer
     {
+        public override int Compare(object value, object otherValue)
+        {
+            return ((bool)value == (bool)otherValue) ? 0 : -1;
+        }
+
         public override bool IsEqualTo(object value, object otherValue)
         {
             return (bool)value == (bool)otherValue;

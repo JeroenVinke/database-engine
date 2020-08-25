@@ -23,6 +23,8 @@
         Comma,
         Select,
         From,
-        Where
+        Where,
+        Join,
+        On
     }
 }

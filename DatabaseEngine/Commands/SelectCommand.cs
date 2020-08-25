@@ -7,5 +7,6 @@ namespace DatabaseEngine.Commands
         public Table Table { get; set; }
         public List<AttributeDefinition> Columns { get; set; } = new List<AttributeDefinition>();
         public Condition Condition { get; set; }
+        public Join Join { get; set; }
     }
 }

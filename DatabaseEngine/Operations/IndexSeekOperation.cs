@@ -1,17 +1,55 @@
-﻿namespace DatabaseEngine.Operations
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace DatabaseEngine.Operations
 {
     public class IndexSeekOperation : Operation
     {
         public Table Table { get; set; }
 
-        public IndexSeekOperation(Table table)
+        public IBPlusTreeNode _index;
+        public IBPlusTreeNode _currentNode;
+        private int _currentIndex = -1;
+
+        public IndexSeekOperation(Table table, IBPlusTreeNode index)
+            : base(new List<Operation>())
         {
             Table = table;
+            _index = index;
         }
 
-        public void Bla()
+        public override void Prepare()
         {
+            base.Prepare();
 
+            _currentNode = _index.GetFirstLeaf();
+            _currentIndex = -1;
+        }
+
+        public override CustomTuple GetNext()
+        {
+            while (_currentNode != null)
+            {
+                int next = _currentIndex + 1;
+
+                if (_currentNode.Values.Count > next)
+                {
+
+                    Block block = Table.StorageFile.ReadBlock(Table.TableDefinition, _currentNode.Values[next].Pointer);
+                    Set set = block.GetSet();
+
+                    _currentIndex++;
+
+                    return set.Find(_currentNode.Values[next].Pointer.Index);
+                }
+                else
+                {
+                    _currentIndex = -1;
+                    _currentNode = _currentNode.Sibling;
+                }
+            }
+
+            return null;
         }
     }
 }

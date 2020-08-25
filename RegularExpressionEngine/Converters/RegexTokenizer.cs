@@ -93,7 +93,7 @@ namespace Compiler.RegularExpressionEngine
 
         private bool IsSpecialCharacter(char c)
         {
-            return "()*+|[]#".Contains(c.ToString().ToLower());
+            return "()*+|[]#\"".Contains(c.ToString().ToLower());
         }
 
         private void Next()

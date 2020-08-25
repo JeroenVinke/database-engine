@@ -61,7 +61,7 @@ namespace Compiler.LexicalAnalyer
                         .ThenByDescending(x => x.MatchedLength).First().Action(buffer);
                     if (token.Type != TokenType.Nothing)
                     {
-                        if (token is WordToken wordToken)
+                        if (token is WordToken wordToken && string.IsNullOrEmpty(wordToken.Lexeme))
                         {
                             wordToken.Lexeme = buffer;
                         }

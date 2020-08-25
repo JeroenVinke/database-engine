@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Compiler.Parser.SyntaxTreeNodes;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 
 namespace DatabaseEngine
@@ -10,13 +12,14 @@ namespace DatabaseEngine
     {
         public NodeCache<TKeyType> NodeCache { get; set; }
 
-        public List<BPlusTreeNodeValue<TKeyType>> Values { get; set; } = new List<BPlusTreeNodeValue<TKeyType>>();
+        public List<BPlusTreeNodeValue> Values { get; set; } = new List<BPlusTreeNodeValue>();
         public IEnumerable<BPlusTreeNode<TKeyType>> PointerNodes => Values.SelectMany(x => new List<Pointer> { x.LeftPointer, x.RightPointer }).Where(x => x != null).Select(x => ReadNode(x));
 
         public static int MaxId = 0;
         public int Id { get; set; }
 
-        public BPlusTreeNode<TKeyType> Sibling { get; set; }
+        public IBPlusTreeNode Sibling => ReadNode(SiblingPointer);
+        public Pointer SiblingPointer { get; set; }
         public BPlusTreeNode<TKeyType> Parent { get; set; }
         public bool Dirty { get; set; }
         public StorageFile StorageFile { get; set; }
@@ -25,13 +28,15 @@ namespace DatabaseEngine
         public bool IsLeaf { get; set; }
         public int MaxSize { get; set; } = 3;
         public bool IsRoot { get; set; }
-        public Relation Relation { get; set; }
+        public Relation IndexRelation { get; set; }
+        public Relation DataRelation { get; set; }
 
-        public BPlusTreeNode(Relation relation, StorageFile storageFile, Pointer page, NodeCache<TKeyType> cache = null)
+        public BPlusTreeNode(Relation indexRelation, Relation dataRelation, StorageFile storageFile, Pointer page, NodeCache<TKeyType> cache = null)
         {
             Id = MaxId++;
             Page = page;
-            Relation = relation;
+            IndexRelation = indexRelation;
+            DataRelation = dataRelation;
             StorageFile = storageFile;
             NodeCache = cache ?? new NodeCache<TKeyType>();
             NodeCache.Add(page.Short, this);
@@ -47,14 +52,14 @@ namespace DatabaseEngine
 
             Pointer pointer = new Pointer(pointerValue);
 
-            Block block = StorageFile.ReadBlock(Relation, pointer);
+            Block block = StorageFile.ReadBlock(IndexRelation, pointer);
 
             return GetNodeFromBlock(pointer, block);
         }
 
         public void ReadNode()
         {
-            Block block = StorageFile.ReadBlock(Relation, Page);
+            Block block = StorageFile.ReadBlock(IndexRelation, Page);
 
             if (block.Header.Empty)
             {
@@ -79,13 +84,13 @@ namespace DatabaseEngine
         {
             if (Block == null)
             {
-                Block = new Block(Relation);
+                Block = new Block(StorageFile, IndexRelation);
             }
 
-            foreach (BPlusTreeNodeValue<TKeyType> value in Values)
+            foreach (BPlusTreeNodeValue value in Values)
             {
-                CustomTuple tuple = new CustomTuple(Relation);
-                tuple.AddValueFor("Value", value.Value);
+                CustomTuple tuple = new CustomTuple(IndexRelation);
+                tuple.AddValueFor<TKeyType>("Value", (TKeyType)value.Value);
 
                 if (value.LeftPointer != null)
                 {
@@ -105,13 +110,20 @@ namespace DatabaseEngine
                     tuple.AddValueFor("ValuePointer", -1);
                 }
 
-                if (value.RightPointer != null)
+                if (IsLeaf && value == Values.Last() && SiblingPointer != null)
                 {
-                    tuple.AddValueFor("RightPointer", value.RightPointer.Short);
+                    tuple.AddValueFor("RightPointer", SiblingPointer.Short);
                 }
                 else
                 {
-                    tuple.AddValueFor("RightPointer", -1);
+                    if (value.RightPointer != null)
+                    {
+                        tuple.AddValueFor("RightPointer", value.RightPointer.Short);
+                    }
+                    else
+                    {
+                        tuple.AddValueFor("RightPointer", -1);
+                    }
                 }
 
                 Block.AddRecord(tuple.ToRecord());
@@ -122,7 +134,7 @@ namespace DatabaseEngine
 
         private BPlusTreeNode<TKeyType> GetNodeFromBlock(Pointer pointer, Block block)
         {
-            BPlusTreeNode<TKeyType> node = new BPlusTreeNode<TKeyType>(Relation, StorageFile, pointer, NodeCache); // pointer
+            BPlusTreeNode<TKeyType> node = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, StorageFile, pointer, NodeCache); // pointer
             node.NodeCache = NodeCache;
             node.Parent = this;
 
@@ -145,17 +157,85 @@ namespace DatabaseEngine
             }
         }
 
+        public IBPlusTreeNode GetFirstLeaf()
+        {
+            if (!IsLeaf)
+            {
+                return PointerNodes.First().GetFirstLeaf();
+            }
+            else
+            {
+                return this;
+            }
+        }
+        //public (BPlusTreeNodeValue, IBPlusTreeNode) GetNext(BPlusTreeNodeValue currentValue)
+        //{
+        //    if (currentValue == null)
+        //    {
+                
+
+        //        return (Values[0], this);
+        //    }
+
+        //    int nextIndex = Values.IndexOf(currentValue) + 1;
+
+        //    if (Values.Count > nextIndex)
+        //    {
+        //        return (Values[nextIndex], this);
+        //    }
+
+        //    if (Sibling != null)
+        //    {
+        //        return (Sibling.Values[0], Sibling);
+        //    }
+
+        //    return (null, null);
+        //}
+
+        public Set IndexSearch(BooleanExpressionASTNode expression)
+        {
+            return IndexSearch(new Set(IndexRelation), this);
+        }
+
+        private Set IndexSearch(Set result, BPlusTreeNode<TKeyType> node)
+        {
+            foreach (BPlusTreeNodeValue treeNodeValue in node.Values)
+            {
+                if (treeNodeValue.LeftPointer != null)
+                {
+                    IndexSearch(result, node.ReadNode(treeNodeValue.LeftPointer.Short));
+                }
+
+                if (treeNodeValue.Pointer != null)
+                {
+                    Block block = StorageFile.ReadBlock(DataRelation, treeNodeValue.Pointer);
+
+                    Set set = block.GetSet();
+
+                    CustomTuple record = set.Find(treeNodeValue.Pointer.Index);
+                    result.Add(record);
+                }
+
+                if (treeNodeValue.RightPointer != null)
+                {
+                    IndexSearch(result, node.ReadNode(treeNodeValue.RightPointer.Short));
+                }
+            }
+
+            return result;
+        }
+
         private void FillNodeFromBlock(BPlusTreeNode<TKeyType> node, Block block)
         {
             foreach (Record record in block.Records)
             {
-                CustomTuple tuple = new CustomTuple(Relation).FromRecord(record);
+                CustomTuple tuple = new CustomTuple(IndexRelation).FromRecord(record);
 
                 int leftPointer = tuple.GetValueFor<int>("LeftPointer");
                 int valuePointer = tuple.GetValueFor<int>("ValuePointer");
                 int rightPointer = tuple.GetValueFor<int>("RightPointer");
 
-                BPlusTreeNodeValue<TKeyType> value = new BPlusTreeNodeValue<TKeyType>
+                BPlusTreeNodeValue value = new BPlusTreeNodeValue
                 {
                     Value = tuple.GetValueFor<TKeyType>("Value")
                 };
@@ -177,9 +257,14 @@ namespace DatabaseEngine
 
                 node.Values.Add(value);
 
-                if (!IsLeaf && leftPointer == -1 && rightPointer == -1)
+                if (!IsLeaf && valuePointer >= 0)
                 {
                     node.IsLeaf = true;
+
+                    if (rightPointer > 0)
+                    {
+                        node.SiblingPointer = new Pointer(rightPointer);
+                    }
                 }
             }
 
@@ -236,14 +321,14 @@ namespace DatabaseEngine
 
         private BPlusTreeNode<TKeyType> ReadNode(Pointer pointer)
         {
-            return ReadNode(pointer.Short);
+            return pointer != null ? ReadNode(pointer.Short) : null;
         }
 
         public IBPlusTreeNode AddValue(object value, Pointer valuePointer)
         {
             if (IsLeaf)
             {
-                AddValueToSelf(new BPlusTreeNodeValue<TKeyType> { Pointer = valuePointer, Value = (TKeyType)value });
+                AddValueToSelf(new BPlusTreeNodeValue { Pointer = valuePointer, Value = (TKeyType)value });
             }
             else
             {
@@ -258,8 +343,8 @@ namespace DatabaseEngine
             if (IsRoot)
             {
                 int half = (int)Math.Ceiling(Values.Count / (double)2);
-                List<BPlusTreeNodeValue<TKeyType>> firstHalf = Values.Take(half).ToList();
-                List<BPlusTreeNodeValue<TKeyType>> secondHalf = Values.Skip(half).ToList();
+                List<BPlusTreeNodeValue> firstHalf = Values.Take(half).ToList();
+                List<BPlusTreeNodeValue> secondHalf = Values.Skip(half).ToList();
 
                 BPlusTreeNode<TKeyType> leftChild = AddChild();
                 leftChild.Values = firstHalf;
@@ -269,12 +354,12 @@ namespace DatabaseEngine
                 rightChild.IsLeaf = IsLeaf;
                 rightChild.Values = secondHalf;
 
-                BPlusTreeNodeValue<TKeyType> middle = new BPlusTreeNodeValue<TKeyType> { Value = Values[half].Value, LeftPointer = leftChild.Page, RightPointer = rightChild.Page };
-                Values = new List<BPlusTreeNodeValue<TKeyType>> { middle };
+                BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Value = Values[half].Value, LeftPointer = leftChild.Page, RightPointer = rightChild.Page };
+                Values = new List<BPlusTreeNodeValue> { middle };
 
                 if (leftChild.IsLeaf)
                 {
-                    leftChild.Sibling = rightChild;
+                    leftChild.SiblingPointer = rightChild.Page;
                 }
 
                 IsLeaf = false;
@@ -283,8 +368,8 @@ namespace DatabaseEngine
             else
             {
                 int half = Values.Count / 2;
-                List<BPlusTreeNodeValue<TKeyType>> firstHalf = Values.Take(half).ToList();
-                List<BPlusTreeNodeValue<TKeyType>> secondHalf = Values.Skip(half).ToList();
+                List<BPlusTreeNodeValue> firstHalf = Values.Take(half).ToList();
+                List<BPlusTreeNodeValue> secondHalf = Values.Skip(half).ToList();
 
                 BPlusTreeNode<TKeyType> rightChild = Parent.AddChild();
                 rightChild.Values = secondHalf;
@@ -293,17 +378,17 @@ namespace DatabaseEngine
 
                 if (IsLeaf)
                 {
-                    Sibling = rightChild;
+                    SiblingPointer = rightChild.Page;
                     rightChild.IsLeaf = true;
                 }
 
-                Parent.AddValueToSelf(new BPlusTreeNodeValue<TKeyType> { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page });
+                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page });
 
                 Dirty = true;
             }
         }
 
-        public void AddValueToSelf(BPlusTreeNodeValue<TKeyType> value)
+        public void AddValueToSelf(BPlusTreeNodeValue value)
         {
             int target = -1;
 
@@ -361,35 +446,14 @@ namespace DatabaseEngine
             }
             else if (value1 is string left && value2 is string right)
             {
-                string alphabet = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWw123456789";
-
-                for(int i = 0; i < left.Length; i++)
-                {
-                    if (right.Length > i)
-                    {
-                        int indexLeft = alphabet.IndexOf(left[i]);
-                        int indexRight = alphabet.IndexOf(right[i]);
-                        if (indexRight > indexLeft)
-                        {
-                            return 1;
-                        }
-                        else if (indexLeft > indexRight)
-                        {
-                            return -1;
-                        }
-                    }
-                    else
-                    {
-                        return -1;
-                    }
-                }
+                return new StringValueComparer().Compare(left, right);
             }
             return 0;
         }
 
         public BPlusTreeNode<TKeyType> AddChild()
         {
-            BPlusTreeNode<TKeyType> child = new BPlusTreeNode<TKeyType>(Relation, StorageFile, StorageFile.GetFreeBlock(), NodeCache);
+            BPlusTreeNode<TKeyType> child = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, StorageFile, StorageFile.GetFreeBlock(), NodeCache);
             child.MaxSize = child.MaxSize;
             child.Parent = this;
             child.Dirty = true;

@@ -19,7 +19,7 @@ namespace Compiler.Parser
                     _instance.Add(new Production(ParserConstants.Initial, new List<SubProduction> {
                         new SubProduction(new List<ExpressionDefinition>
                         {
-                            new NonTerminalExpressionDefinition { Identifier = ParserConstants.Select }
+                            new NonTerminalExpressionDefinition { Identifier = ParserConstants.CommandRule }
                         }),
                         //new SubProduction(new List<ExpressionDefinition>
                         //{
@@ -31,6 +31,7 @@ namespace Compiler.Parser
                         //})
                     }));
 
+                    CommandRule.Initialize(ref _instance);
                     StringExpressionRule.Initialize(ref _instance);
                     SelectRule.Initialize(ref _instance);
                     BooleanExpressionRule.Initialize(ref _instance);

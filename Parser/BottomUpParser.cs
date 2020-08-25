@@ -13,7 +13,6 @@ namespace Compiler.Parser
         private bool DebugModeEnabled = false;
         private LexicalAnalyzer LexicalAnalyzer { get; set; }
         private Token Current { get; set; }
-        //public SymbolTable RootSymbolTable { get; set; } = new SymbolTable();
 
         private List<ItemSet> Stack = new List<ItemSet>();
         private ParsingTable ParsingTable { get; set; }
@@ -22,20 +21,6 @@ namespace Compiler.Parser
         private List<ItemSet> CanonicalSets { get; set; }
         private List<ParsingNode> ParsingNodes = new List<ParsingNode>();
         private ItemSet Initial { get; set; }
-
-        //private List<Instruction> _il;
-        //public List<Instruction> IL
-        //{
-        //    get
-        //    {
-        //        if(_il == null)
-        //        {
-        //            _il = new List<Instruction>();
-        //            TopLevelAST.GenerateCode(_il);
-        //        }
-        //        return _il;
-        //    }
-        //}
 
         public BottomUpParser() : this(null)
         {
@@ -156,7 +141,7 @@ namespace Compiler.Parser
             {
                 // reduce/reduce of shift/reduce conflict
 
-                List<ActionParsingTableEntry> entriesForLookahead = entries.Where(x => x.Items.Any(y => y.Lookahead.Any(z => z.TokenType == Current.Type))).ToList(); ;
+                List<ActionParsingTableEntry> entriesForLookahead = entries.Where(x => x.Items.Any(y => y.Lookahead.Any(z => z.TokenType == Current.Type))).ToList();
 
                 if (entriesForLookahead.Count == 1)
                 {

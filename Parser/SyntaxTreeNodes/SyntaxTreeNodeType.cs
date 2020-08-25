@@ -16,6 +16,7 @@
         RelOp,
         Select,
         From,
-        String
+        String,
+        Join
     }
 }

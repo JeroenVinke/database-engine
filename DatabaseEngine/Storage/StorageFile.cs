@@ -100,7 +100,7 @@ namespace DatabaseEngine
         {
             byte[] buffer = GetBlockBytes(pageNumber.PageNumber);
 
-            return new Block(relation, buffer, pageNumber);
+            return new Block(this, relation, buffer, pageNumber);
         }
 
         public Pointer GetFreeBlock()

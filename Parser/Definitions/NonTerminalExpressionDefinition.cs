@@ -76,9 +76,9 @@ namespace Compiler.Parser
                         }
                     }
 
-                    if (production.Identifier == Identifier && last is NonTerminalExpressionDefinition nte)
+                    if (found && production.Identifier == Identifier && last is NonTerminalExpressionDefinition nte)
                     {
-                        result.AddRangeUnique(new NonTerminalExpressionDefinition { Identifier = nte.Identifier }.GetFollow(visited));
+                        result.AddRangeUnique(new NonTerminalExpressionDefinition { Identifier = nte.Identifier }.First());
                     }
 
                     // when last
