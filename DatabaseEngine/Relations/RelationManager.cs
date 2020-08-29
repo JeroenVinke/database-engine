@@ -29,12 +29,12 @@ namespace DatabaseEngine.Relations
             {
                 TableDefinition tableDefinition = tableTuple.ToModel<TableDefinition>();
 
-                foreach (CustomTuple columnTuple in Program.ExecuteQuery("SELECT * FROM Columns WHERE RelationId == " + tableDefinition.Id))
+                foreach (CustomTuple columnTuple in Program.ExecuteQuery("SELECT * FROM Columns WHERE RelationId = " + tableDefinition.Id))
                 {
                     tableDefinition.Add(columnTuple.ToModel<AttributeDefinition>());
                 }
 
-                foreach (CustomTuple indexTuple in Program.ExecuteQuery("SELECT * FROM Indexes WHERE RelationId == " + tableDefinition.Id))
+                foreach (CustomTuple indexTuple in Program.ExecuteQuery("SELECT * FROM Indexes WHERE RelationId = " + tableDefinition.Id))
                 {
                     Index index = indexTuple.ToModel<Index>();
                     tableDefinition.AddIndex(index);

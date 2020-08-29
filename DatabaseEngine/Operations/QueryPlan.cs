@@ -32,6 +32,11 @@ namespace DatabaseEngine.Operations
                     input = new FilterOperation(input, selectCommand.Condition);
                 }
 
+                if (selectCommand.Columns != null)
+                {
+                    input = new SelectOperation(input, selectCommand.Columns);
+                }
+
                 input.Prepare();
 
                 CustomTuple next;
@@ -59,7 +64,7 @@ namespace DatabaseEngine.Operations
         {
             if (table.TableDefinition.HasClusteredIndex())
             {
-                return new IndexSeekOperation(table, table.GetIndex(column.Name ?? table.TableDefinition.GetClusteredIndex().Column));
+                return new IndexSeekOperation(table, table.GetIndex(column?.Name ?? table.TableDefinition.GetClusteredIndex().Column));
             }
             else
             {

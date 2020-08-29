@@ -78,9 +78,47 @@ namespace DatabaseEngine
             return false;
         }
 
+        public CustomTuple Projection(List<AttributeDefinition> columns)
+        {
+            CustomTuple result = new CustomTuple(Relation);
+
+            foreach(AttributeDefinition column in columns)
+            {
+                if (column.Name == "*")
+                {
+                    result.Entries.AddRange(Entries);
+                }
+                else
+                {
+                    result.Entries.Add(GetEntryFor(column));
+                }
+            }
+            return result;
+        }
+
+        public CustomTuple Merge(CustomTuple tuple2)
+        {
+            CustomTuple tuple = new CustomTuple(null);
+            foreach(CustomObject obj in this.Entries)
+            {
+                tuple.Entries.Add(obj);
+            }
+            foreach (CustomObject obj in tuple2.Entries)
+            {
+                tuple.Entries.Add(obj);
+            }
+
+            return tuple;
+        }
+
         public CustomObject GetEntryFor(string columnName)
         {
             return Entries.First(x => x.AttributeDefinition.Name.ToLower() == columnName.ToLower());
+        }
+
+        public CustomObject GetEntryFor(AttributeDefinition column)
+        {
+            return Entries.First(x => x.AttributeDefinition == column);
         }
 
         public T GetValueFor<T>(string columnName)

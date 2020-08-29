@@ -41,7 +41,7 @@ namespace Compiler.Parser.Rules
                         string relOpToken = node.GetAttributeForKey<WordToken>("RelOp", ParserConstants.Token).Lexeme;
                         RelOp relOp;
 
-                        if (relOpToken == "==")
+                        if (relOpToken == "=")
                         {
                             relOp = RelOp.Equals;
                         }

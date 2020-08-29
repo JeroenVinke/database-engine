@@ -1,6 +1,4 @@
-﻿using Compiler.Parser.SyntaxTreeNodes;
-using DatabaseEngine.Relations;
-using System;
+﻿using DatabaseEngine.Relations;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -38,7 +36,7 @@ namespace DatabaseEngine
 
         public IBPlusTreeNode GetIndex(string rightColumn)
         {
-            return _indexesWithTrees.First(x => x.Key.Column == rightColumn).Value;
+            return _indexesWithTrees.First(x => x.Key.Column.ToLower() == rightColumn.ToLower()).Value;
         }
 
         private IBPlusTreeNode GetBTreeForIndex(Pointer rootBlock, Index index)

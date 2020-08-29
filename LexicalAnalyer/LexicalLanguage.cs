@@ -21,13 +21,14 @@ namespace Compiler.LexicalAnalyer
             lexLanguage.Add("(into|INTO)#", (string value) => { return new WordToken { Type = TokenType.Into }; });
             lexLanguage.Add("(values|VALUES)#", (string value) => { return new WordToken { Type = TokenType.Values }; });
             lexLanguage.Add("(on|ON)#", (string value) => { return new WordToken { Type = TokenType.On }; });
-            lexLanguage.Add("(<|>|<=|>=|==|!=)#", (string value) => { return new WordToken { Type = TokenType.RelOp }; });
+            lexLanguage.Add("(<|>|<=|>=|=|!=)#", (string value) => { return new WordToken { Type = TokenType.RelOp }; });
             lexLanguage.Add("\\|\\|#", (string value) => { return new WordToken { Type = TokenType.Or }; });
             lexLanguage.Add("&&#", (string value) => { return new WordToken { Type = TokenType.And }; });
-            lexLanguage.Add("\\+#", (string value) => { return new WordToken { Type = TokenType.Plus }; });
             lexLanguage.Add(",#", (string value) => { return new WordToken { Type = TokenType.Comma }; });
-            lexLanguage.Add("\\-#", (string value) => { return new WordToken { Type = TokenType.Minus }; });
-            lexLanguage.Add("\\*#", (string value) => { return new WordToken { Type = TokenType.Multiplication }; });
+            lexLanguage.Add("\\*#", (string value) =>
+            {
+                return new WordToken { Type = TokenType.Identifier, Lexeme = value };
+            });
             lexLanguage.Add("\\/#", (string value) => { return new WordToken { Type = TokenType.Division }; });
             lexLanguage.Add("(true|false)#", (string value) => { return new WordToken { Type = TokenType.Boolean }; });
             lexLanguage.Add("\"([a-zA-Z])*\"#", (string value) =>

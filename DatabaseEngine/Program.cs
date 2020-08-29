@@ -4,7 +4,6 @@ using DatabaseEngine.Relations;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace DatabaseEngine
 {
@@ -24,7 +23,7 @@ namespace DatabaseEngine
             CreateProducersTableIfNotExists(RelationManager);
 
 
-            string query = "select * from producers join products on producers.name == products.producer where Name == \"AMD\" ";
+            string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
             Console.WriteLine("Query: " + query);
             while (!string.IsNullOrEmpty(query))
             {

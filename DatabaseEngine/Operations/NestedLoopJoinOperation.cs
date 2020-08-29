@@ -43,7 +43,7 @@ namespace DatabaseEngine.Operations
                 {
                     CustomTuple result = _leftTuple;
                     _leftTuple = _left.GetNext();
-                    return result;
+                    return result.Merge(rightTuple);
                 }
 
                 if (_leftTuple == null)

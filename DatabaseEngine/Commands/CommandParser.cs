@@ -4,6 +4,7 @@ using Compiler.Parser;
 using Compiler.Parser.SyntaxTreeNodes;
 using DatabaseEngine.Relations;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine.Commands
@@ -35,7 +36,8 @@ namespace DatabaseEngine.Commands
                 {
                     Table = table,
                     Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition),
-                    Join = JoinNodeToJoin(table, selectCommandAST.Join)
+                    Join = JoinNodeToJoin(table, selectCommandAST.Join),
+                    Columns = SelectColumnsToColumns(table, selectCommandAST.SelectColumns)
                 };
 
                 return selectCommand;
@@ -54,6 +56,35 @@ namespace DatabaseEngine.Commands
             }
 
             return null;
+        }
+
+        private List<AttributeDefinition> SelectColumnsToColumns(Table table, List<FactorASTNode> selectColumns)
+        {
+            List<AttributeDefinition> result = new List<AttributeDefinition>();
+
+            foreach (FactorASTNode factor in selectColumns)
+            {
+                if (factor is IdentifierASTNode identifierASTNode)
+                {
+                    if (identifierASTNode.Identifier == "*")
+                    {
+                        result.Add(new AttributeDefinition() { Name = "*" });
+                    }
+                    else
+                    {
+                        if (identifierASTNode.Identifier.Contains("."))
+                        {
+                            result.Add(GetColumnFromJoinString(GetTableFromJoinString(identifierASTNode.Identifier), identifierASTNode.Identifier));
+                        }
+                        else
+                        {
+                            result.Add(table.TableDefinition.GetAttributeByName(identifierASTNode.Identifier));
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
 
         private object GetValueFromFactor(FactorASTNode x)
@@ -113,7 +144,7 @@ namespace DatabaseEngine.Commands
 
                 return new LeafCondition
                 {
-                    Column = tableDefinition.First(x => x.Name.ToLower() == column.ToLower()),
+                    Column = GetColumnFromJoinString(column.Contains(".") ? GetTableFromJoinString(column) : _relationManager.GetTable(tableDefinition.Name), column),
                     Operation = relopNode.RelationOperator,
                     Value = value
                 };
@@ -136,23 +167,37 @@ namespace DatabaseEngine.Commands
             return null;
         }
 
-        private Join JoinNodeToJoin(Table leftTable, JoinASTNode join)
+        private Join JoinNodeToJoin(Table joinTable, JoinASTNode join)
         {
             if (join == null)
             {
                 return null;
             }
 
-            Table rightTable = _relationManager.GetTable(join.TargetTable.Identifier);
+            Table leftTable = GetTableFromJoinString(join.LeftColumn.Identifier);
+            Table rightTable = GetTableFromJoinString(join.RightColumn.Identifier);
+            AttributeDefinition leftColumn = GetColumnFromJoinString(leftTable, join.LeftColumn.Identifier);
+            AttributeDefinition rightColumn = GetColumnFromJoinString(rightTable, join.RightColumn.Identifier);
+
+            bool doSwitch = leftTable != joinTable;
 
             return new Join
             {
-                LeftTable = leftTable,
-                RightTable = rightTable,
-                LeftColumn = leftTable.TableDefinition.GetAttributeByName(join.LeftColumn.Identifier.Split(".")[1]),
-                RightColumn = rightTable.TableDefinition.GetAttributeByName(join.RightColumn.Identifier.Split(".")[1])
+                LeftTable = doSwitch ? rightTable : leftTable,
+                LeftColumn = doSwitch ? rightColumn : leftColumn,
+                RightTable = doSwitch ? leftTable : rightTable,
+                RightColumn = doSwitch ? leftColumn : rightColumn,
             };
         }
 
+        private Table GetTableFromJoinString(string joinString)
+        {
+            return _relationManager.GetTable(joinString.Split(".")[0]);
+        }
+
+        private AttributeDefinition GetColumnFromJoinString(Table table, string joinString)
+        {
+            return table.TableDefinition.GetAttributeByName(joinString.Contains(".") ? joinString.Split(".")[1] : joinString);
+        }
     }
 }
