@@ -10,7 +10,6 @@ namespace Compiler.Parser.Rules
         public static void Initialize(ref Grammar grammar)
         {
             grammar.Add(new Production(ParserConstants.NumericExpression, new List<SubProduction> {
-                PlusRule(),
                 TermRule()
             }));
 
@@ -98,24 +97,6 @@ namespace Compiler.Parser.Rules
                         node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<NumericExpressionASTNode>(ParserConstants.NumericExpression, ParserConstants.SyntaxTreeNode));
                     }),
                     new TerminalExpressionDefinition { TokenType = TokenType.ParenthesisClose }
-                }
-            );
-        }
-
-        private static SubProduction PlusRule()
-        {
-            return new SubProduction
-            (
-                new List<ExpressionDefinition> {
-                    new NonTerminalExpressionDefinition { Key = "NumericExpression1", Identifier = ParserConstants.NumericExpression },
-                    new TerminalExpressionDefinition { TokenType = TokenType.Plus },
-                    new NonTerminalExpressionDefinition { Key = "NumericExpression2", Identifier = ParserConstants.NumericExpression },
-                    new SemanticActionDefinition((ParsingNode node) => {
-                        FactorASTNode left = node.GetAttributeForKey<FactorASTNode>("NumericExpression1", ParserConstants.SyntaxTreeNode);
-                        FactorASTNode right = node.GetAttributeForKey<FactorASTNode>("NumericExpression2", ParserConstants.SyntaxTreeNode);
-                        AdditionASTNode syntaxTreeNode = new AdditionASTNode(left, right);
-                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, syntaxTreeNode);
-                    })
                 }
             );
         }

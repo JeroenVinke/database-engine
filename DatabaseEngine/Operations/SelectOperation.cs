@@ -3,16 +3,16 @@ using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
-    public class FilterOperation : Operation
+    public class SelectOperation : Operation
     {
         private Operation _inputOperation;
-        private Condition _condition;
+        private List<AttributeDefinition> _columnsToSelect;
 
-        public FilterOperation(Operation inputOperation, Condition condition)
+        public SelectOperation(Operation inputOperation, List<AttributeDefinition> columnsToSelect)
             :base (new List<Operation> { inputOperation })
         {
             _inputOperation = inputOperation;
-            _condition = condition;
+            _columnsToSelect = columnsToSelect;
         }
 
         public override CustomTuple GetNext()
@@ -21,12 +21,7 @@ namespace DatabaseEngine.Operations
 
             if (tuple != null)
             {
-                if (SatisfiesCondition(tuple, _condition))
-                {
-                    return tuple;
-                }
-
-                return GetNext();
+                return tuple.Projection(_columnsToSelect);
             }
 
             return null;

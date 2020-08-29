@@ -27,5 +27,6 @@
         public const string CommandRule = "Command";
         public const string Join = "Join";
         public const string Insert = "Insert";
+        public const string SelectColumns = "SelectColumns";
     }
 }

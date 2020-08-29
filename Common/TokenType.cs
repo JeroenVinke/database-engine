@@ -8,8 +8,6 @@
         ParenthesisClose,
         Nothing,
         EndOfFile,
-        Plus,
-        Minus,
         Division,
         Multiplication,
         EmptyString,

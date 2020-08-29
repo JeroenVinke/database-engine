@@ -39,10 +39,42 @@ namespace Compiler.Parser.Rules
                     }
                 )
             }));
+            grammar.Add(new Production(ParserConstants.SelectColumns, new List<SubProduction>
+            {
+                GetSelectColumnsRule(),
+                new SubProduction
+                (
+                    new List<ExpressionDefinition>
+                    {
+                        new TerminalExpressionDefinition { TokenType = TokenType.Multiplication },
+                        new SemanticActionDefinition((ParsingNode node) =>
+                        {
+                            node.Attributes.Add(ParserConstants.SyntaxTreeNodes, new List<FactorASTNode>() { new IdentifierASTNode() { Identifier = "*"  } });
+                        })
+                    }
+                )
+            }));
             grammar.Add(new Production(ParserConstants.Select, new List<SubProduction>
             {
                  GetSelectRule()
             }));
+        }
+
+        
+
+        private static SubProduction GetSelectColumnsRule()
+        {
+            return new SubProduction
+            (
+                new List<ExpressionDefinition>
+                {
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Factors },
+                    new SemanticActionDefinition((ParsingNode node) =>
+                    {
+                        node.Attributes.Add(ParserConstants.SyntaxTreeNodes, node.GetAttributeForKey<List<FactorASTNode>>(ParserConstants.Factors, ParserConstants.Factors));
+                    })
+                }
+            );
         }
 
         private static SubProduction GetJoinRule()
@@ -77,7 +109,7 @@ namespace Compiler.Parser.Rules
                 new List<ExpressionDefinition>
                 {
                     new TerminalExpressionDefinition { TokenType = TokenType.Select },
-                    new TerminalExpressionDefinition { TokenType = TokenType.Multiplication },
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.SelectColumns },
                     new TerminalExpressionDefinition { TokenType = TokenType.From },
                     new NonTerminalExpressionDefinition { Identifier = ParserConstants.Identifier },
                     new NonTerminalExpressionDefinition { Identifier = ParserConstants.Join },
@@ -98,7 +130,8 @@ namespace Compiler.Parser.Rules
                         {
                             From = from,
                             Condition = condition,
-                            Join = join
+                            Join = join,
+                            SelectColumns = node.GetAttributeForKey<List<FactorASTNode>>(ParserConstants.SelectColumns, ParserConstants.SyntaxTreeNodes)
                         });
                     })
                 }

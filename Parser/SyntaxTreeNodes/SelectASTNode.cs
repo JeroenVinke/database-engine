@@ -4,6 +4,7 @@ namespace Compiler.Parser.SyntaxTreeNodes
 {
     public class SelectASTNode : SyntaxTreeNode
     {
+        public List<FactorASTNode> SelectColumns { get; set; }
         public FromASTNode From { get; set; }
         public BooleanExpressionASTNode Condition { get; set; }
         public JoinASTNode Join { get; set; }
@@ -14,7 +15,9 @@ namespace Compiler.Parser.SyntaxTreeNodes
 
         protected override List<SyntaxTreeNode> GetChildren()
         {
-            return new List<SyntaxTreeNode> { From, Condition, Join };
+            var nodes = new List<SyntaxTreeNode> { From, Condition, Join };
+            nodes.AddRange(SelectColumns);
+            return nodes;
         }
 
         public override string ToString()
