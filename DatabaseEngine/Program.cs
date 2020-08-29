@@ -24,8 +24,7 @@ namespace DatabaseEngine
             CreateProducersTableIfNotExists(RelationManager);
 
 
-            //string query = "select * from producers join products on producers.name == products.producer where Name == \"AMD\" ";
-            string query = "select * from products"; // klopt niet
+            string query = "select * from producers join products on producers.name == products.producer where Name == \"AMD\" ";
             Console.WriteLine("Query: " + query);
             while (!string.IsNullOrEmpty(query))
             {
@@ -86,8 +85,8 @@ namespace DatabaseEngine
                 table.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
 
-                Table createdTable = relationManager.CreateTable(table);
-                WriteProducers(createdTable);
+                relationManager.CreateTable(table);
+                WriteProducers();
             }
         }
 
@@ -104,27 +103,21 @@ namespace DatabaseEngine
                 table.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "Producer", Type = ValueType.String });
-                table.AddClusteredIndex(new List<AttributeDefinition>
-                {
-                    table.First(x => x.Name == "Id" )
-                }, 0);
-                table.AddNonClusteredIndex(new List<AttributeDefinition>
-                {
-                    table.First(x => x.Name == "Producer")
-                }, 0);
+                table.AddIndex(new Index { IsClustered = true, Column = "Id" });
+                table.AddIndex(new Index { IsClustered = false, Column = "Producer" });
 
-                Table createdTable = relationManager.CreateTable(table);
-                WriteProducts(createdTable);
+                relationManager.CreateTable(table);
+                WriteProducts();
             }
         }
 
-        private static void WriteProducers(Table table)
+        private static void WriteProducers()
         {
             ExecuteQuery("INSERT INTO producers VALUES (1, \"Intel\")");
             ExecuteQuery("INSERT INTO producers VALUES (2, \"AMD\")");
         }
 
-        private static void WriteProducts(Table table)
+        private static void WriteProducts()
         {
             ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
             ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");

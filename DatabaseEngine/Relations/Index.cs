@@ -1,11 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.Models;
+using System.Collections.Generic;
 
 namespace DatabaseEngine
 {
     public class Index
     {
-        public List<AttributeDefinition> Columns { get; set; } = new List<AttributeDefinition>();
-        public bool Clustered { get; set; }
-        public Pointer RootPointer { get; set; }
+        [FromColumn("Column")]
+        public string Column { get; set; }
+
+        [FromColumn("IsClustered")]
+        public bool IsClustered { get; set; }
+        [FromColumn("RootBlockId")]
+        public int RootBlockId { get; set; }
+        public Pointer RootPointer
+        {
+            get
+            {
+                return new Pointer(RootBlockId);
+            }
+            set
+            {
+                RootBlockId = value.Short;
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DatabaseEngine.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,6 +8,8 @@ namespace DatabaseEngine
     public class TableDefinition : Relation
     {
         public List<Index> Indexes { get; set; } = new List<Index>();
+        [FromColumn("RootBlockId")]
+        public int RootBlockId { get; set; }
 
         public TableDefinition()
         {
@@ -17,39 +20,19 @@ namespace DatabaseEngine
             //});
         }
 
-        public void AddClusteredIndex(List<AttributeDefinition> columns, int rootPointer)
-        {
-            if (HasClusteredIndex())
-            {
-                throw new Exception("Only one clustered index allowed");
-            }
-
-            Indexes.Add(new Index
-            {
-                Clustered = true,
-                Columns = columns,
-                RootPointer = new Pointer(rootPointer)
-            });
-        }
-
         public Index GetClusteredIndex()
         {
-            return Indexes.First(x => x.Clustered);
+            return Indexes.First(x => x.IsClustered);
         }
 
-        public void AddNonClusteredIndex(List<AttributeDefinition> columns, int rootPointer)
+        public void AddIndex(Index index)
         {
-            Indexes.Add(new Index
-            {
-                Clustered = false,
-                Columns = columns,
-                RootPointer = new Pointer(rootPointer)
-            });
+            Indexes.Add(index);
         }
 
         public bool HasClusteredIndex()
         {
-            return Indexes.Any(x => x.Clustered);
+            return Indexes.Any(x => x.IsClustered);
         }
 
         public IEnumerable<Index> GetIndexes()
@@ -59,7 +42,7 @@ namespace DatabaseEngine
 
         internal IEnumerable<Index> NonClusteredIndexes()
         {
-            return Indexes.Where(x => !x.Clustered);
+            return Indexes.Where(x => !x.IsClustered);
         }
 
         internal AttributeDefinition GetAttributeByName(string v)

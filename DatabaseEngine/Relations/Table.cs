@@ -36,20 +36,22 @@ namespace DatabaseEngine
             }
         }
 
-        public IBPlusTreeNode GetIndex(AttributeDefinition rightColumn)
+        public IBPlusTreeNode GetIndex(string rightColumn)
         {
-            return _indexesWithTrees.First(x => x.Key.Columns.First().Name == rightColumn.Name).Value;
+            return _indexesWithTrees.First(x => x.Key.Column == rightColumn).Value;
         }
 
         private IBPlusTreeNode GetBTreeForIndex(Pointer rootBlock, Index index)
         {
             IBPlusTreeNode node = null;
 
-            if (index.Columns.Any(x => x.Type == ValueType.String))
+            ValueType valueType = TableDefinition.GetAttributeByName(index.Column).Type;
+
+            if (valueType == ValueType.String)
             {
                 node = new BPlusTreeNode<string>(_relationManager.GetRelation(Constants.StringIndexRelationId), TableDefinition, StorageFile, rootBlock);
             }
-            else if (index.Columns.All(x => x.Type == ValueType.Integer))
+            else if (valueType == ValueType.Integer)
             {
                 node = new BPlusTreeNode<int>(_relationManager.GetRelation(Constants.IntIndexRelationId), TableDefinition, StorageFile, rootBlock);
             }
@@ -60,7 +62,7 @@ namespace DatabaseEngine
             return node;
         }
 
-        private IBPlusTreeNode ClusteredIndex => _indexesWithTrees.FirstOrDefault(x => x.Key.Clustered).Value;
+        private IBPlusTreeNode ClusteredIndex => _indexesWithTrees.FirstOrDefault(x => x.Key.IsClustered).Value;
 
         public void Insert(object[] entries)
         {
@@ -69,7 +71,7 @@ namespace DatabaseEngine
 
             if (TableDefinition.HasClusteredIndex())
             {
-                object key = tuple.GetValueFor<object>(TableDefinition.GetClusteredIndex().Columns.First().Name);
+                object key = tuple.GetValueFor<object>(TableDefinition.GetClusteredIndex().Column);
                 Pointer spot = ClusteredIndex.Find(key, false);
 
                 if (spot == null)
@@ -92,7 +94,7 @@ namespace DatabaseEngine
 
             foreach (KeyValuePair<Index, IBPlusTreeNode> indexTree in _indexesWithTrees)
             {
-                object value = tuple.GetValueFor<object>(indexTree.Key.Columns[0].Name);
+                object value = tuple.GetValueFor<object>(indexTree.Key.Column);
                 indexTree.Value.AddValue(value, indexKey);
                 indexTree.Value.WriteTree();
             }

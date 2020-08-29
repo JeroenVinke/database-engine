@@ -25,50 +25,23 @@ namespace DatabaseEngine.Relations
 
         private void LoadRelationsFromStorage()
         {
-            foreach (CustomTuple table in Program.ExecuteQuery("SELECT * FROM Tables"))
+            foreach (CustomTuple tableTuple in Program.ExecuteQuery("SELECT * FROM Tables"))
             {
-                TableModel tableModel = new TableModel();
+                TableDefinition tableDefinition = tableTuple.ToModel<TableDefinition>();
 
-                foreach(PropertyInfo member in typeof(TableModel).GetProperties())
+                foreach (CustomTuple columnTuple in Program.ExecuteQuery("SELECT * FROM Columns WHERE RelationId == " + tableDefinition.Id))
                 {
-                    FromColumnAttribute fromColumn = member.GetCustomAttribute(typeof(FromColumnAttribute)) as FromColumnAttribute;
-                    if (fromColumn != null)
-                    {
-                        member.SetValue(tableModel, table.GetType().GetMethod("GetValueFor").MakeGenericMethod(member.PropertyType).Invoke(table, new object[] { fromColumn.ColumnName }));
-                    }
+                    tableDefinition.Add(columnTuple.ToModel<AttributeDefinition>());
                 }
 
-                int relationId = table.GetValueFor<int>("Id");
-
-                TableDefinition tableDefinition = new TableDefinition
+                foreach (CustomTuple indexTuple in Program.ExecuteQuery("SELECT * FROM Indexes WHERE RelationId == " + tableDefinition.Id))
                 {
-                    Id = relationId,
-                    Name = table.GetValueFor<string>("Name")
-                };
-
-                foreach (CustomTuple column in Program.ExecuteQuery("SELECT * FROM Columns").Where(x => x.GetValueFor<int>("RelationId") == relationId))
-                {
-                    tableDefinition.Add(new AttributeDefinition() { Name = column.GetValueFor<string>("Name"), Type = (ValueType)column.GetValueFor<int>("Type") });
-                }
-
-                foreach (CustomTuple index in Program.ExecuteQuery("SELECT * FROM Indexes").Where(x => x.GetValueFor<int>("RelationId") == relationId))
-                {
-                    if (index.GetValueFor<bool>("IsClustered"))
-                    {
-                        tableDefinition.AddClusteredIndex(new List<AttributeDefinition> {
-                            tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns")),
-                        }, index.GetValueFor<int>("RootBlock"));
-                    }
-                    else
-                    {
-                        tableDefinition.AddNonClusteredIndex(new List<AttributeDefinition> {
-                            tableDefinition.First(x => x.Name == index.GetValueFor<string>("Columns"))
-                        }, index.GetValueFor<int>("RootBlock"));
-                    }
+                    Index index = indexTuple.ToModel<Index>();
+                    tableDefinition.AddIndex(index);
                 }
 
                 Relations.Add(tableDefinition);
-                Tables.Add(new Table(this, _storageFile, tableDefinition, new Pointer(table.GetValueFor<int>("RootBlock"))));
+                Tables.Add(new Table(this, _storageFile, tableDefinition, new Pointer(tableDefinition.RootBlockId)));
             }
         }
 
@@ -86,7 +59,7 @@ namespace DatabaseEngine.Relations
             };
             TablesTable.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
             TablesTable.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
-            TablesTable.Add(new AttributeDefinition() { Name = "RootBlock", Type = ValueType.Integer });
+            TablesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.Integer });
             Relations.Add(TablesTable);
 
 
@@ -108,8 +81,8 @@ namespace DatabaseEngine.Relations
             };
             IndexesTable.Add(new AttributeDefinition() { Name = "RelationId", Type = ValueType.Integer });
             IndexesTable.Add(new AttributeDefinition() { Name = "IsClustered", Type = ValueType.Boolean });
-            IndexesTable.Add(new AttributeDefinition() { Name = "Columns", Type = ValueType.String });
-            IndexesTable.Add(new AttributeDefinition() { Name = "RootBlock", Type = ValueType.Integer });
+            IndexesTable.Add(new AttributeDefinition() { Name = "Column", Type = ValueType.String });
+            IndexesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.Integer });
             Relations.Add(IndexesTable);
 
             Table tablesTable = new Table(this, _storageFile, TablesTable, new Pointer(0, 0));
@@ -144,9 +117,9 @@ namespace DatabaseEngine.Relations
 
             foreach(Index index in table.GetIndexes())
             {
-                index.RootPointer = index.Clustered ? new Pointer(rootBlock): _storageFile.GetFreeBlock();
+                index.RootPointer = index.IsClustered ? new Pointer(rootBlock): _storageFile.GetFreeBlock();
 
-                indexesTable.Insert(new object[] { table.Id, index.Clustered, string.Join("|", index.Columns.Select(x => x.Name)), index.RootPointer.Short});
+                indexesTable.Insert(new object[] { table.Id, index.IsClustered, index.Column, index.RootPointer.Short});
             }
 
             Tables.Add(new Table(this, _storageFile, table, new Pointer(rootBlock)));

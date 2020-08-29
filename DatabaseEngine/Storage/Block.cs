@@ -87,7 +87,7 @@ namespace DatabaseEngine
 
             if (Relation is TableDefinition tableDefinition && tableDefinition.HasClusteredIndex())
             {
-                string clusteredIndex = (Relation as TableDefinition).GetClusteredIndex().Columns.First().Name;
+                string clusteredIndex = (Relation as TableDefinition).GetClusteredIndex().Column;
 
                 if (!string.IsNullOrEmpty(clusteredIndex) && Header.Offsets.Count > 0)
                 {

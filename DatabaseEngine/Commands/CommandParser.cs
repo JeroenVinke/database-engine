@@ -1,4 +1,5 @@
-﻿using Compiler.LexicalAnalyer;
+﻿using Compiler.Common;
+using Compiler.LexicalAnalyer;
 using Compiler.Parser;
 using Compiler.Parser.SyntaxTreeNodes;
 using DatabaseEngine.Relations;
@@ -95,16 +96,41 @@ namespace DatabaseEngine.Commands
 
                 return c;
             }
-            else if (expr is RelOpASTNode relopNode
-                && relopNode.Left is IdentifierASTNode idAstNode
-                && relopNode.Right is StringASTNode stringAstNode)
+            else if (expr is RelOpASTNode relopNode)
             {
+                string column = "";
+
+                if (relopNode.Left is IdentifierASTNode)
+                {
+                    column = ((IdentifierASTNode)relopNode.Left).Identifier;
+                }
+                else if (relopNode.Right is IdentifierASTNode)
+                {
+                    column = ((IdentifierASTNode)relopNode.Right).Identifier;
+                }
+
+                object value = GetValueFromConditionASTNode(relopNode.Right) ?? GetValueFromConditionASTNode(relopNode.Left);
+
                 return new LeafCondition
                 {
-                    Column = tableDefinition.First(x => x.Name.ToLower() == idAstNode.Identifier.ToLower()),
+                    Column = tableDefinition.First(x => x.Name.ToLower() == column.ToLower()),
                     Operation = relopNode.RelationOperator,
-                    Value = stringAstNode.Value
+                    Value = value
                 };
+            }
+
+            return null;
+        }
+
+        private object GetValueFromConditionASTNode(FactorASTNode node)
+        {
+            if (node is StringASTNode stringASTNode)
+            {
+                return stringASTNode.Value;
+            }
+            else if (node is NumberASTNode intASTNode)
+            {
+                return intASTNode.Value;
             }
 
             return null;

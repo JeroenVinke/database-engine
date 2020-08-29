@@ -1,6 +1,8 @@
-﻿using System;
+﻿using DatabaseEngine.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace DatabaseEngine
 {
@@ -12,6 +14,22 @@ namespace DatabaseEngine
         public CustomTuple(Relation relation)
         {
             Relation = relation;
+        }
+
+        public T ToModel<T>() where T : class, new()
+        {
+            T model = new T();
+
+            foreach (PropertyInfo member in typeof(T).GetProperties())
+            {
+                FromColumnAttribute fromColumn = member.GetCustomAttribute(typeof(FromColumnAttribute)) as FromColumnAttribute;
+                if (fromColumn != null)
+                {
+                    member.SetValue(model, GetType().GetMethod("GetValueFor").MakeGenericMethod(member.PropertyType).Invoke(this, new object[] { fromColumn.ColumnName }));
+                }
+            }
+
+            return model;
         }
 
         internal bool IsEqualTo(CustomTuple otherRecord)
@@ -62,7 +80,7 @@ namespace DatabaseEngine
 
         public CustomObject GetEntryFor(string columnName)
         {
-            return Entries.First(x => x.AttributeDefinition.Name == columnName);
+            return Entries.First(x => x.AttributeDefinition.Name.ToLower() == columnName.ToLower());
         }
 
         public T GetValueFor<T>(string columnName)

@@ -59,7 +59,7 @@ namespace DatabaseEngine.Operations
         {
             if (table.TableDefinition.HasClusteredIndex())
             {
-                return new IndexSeekOperation(table, table.GetIndex(column ?? table.TableDefinition.GetClusteredIndex().Columns.First()));
+                return new IndexSeekOperation(table, table.GetIndex(column.Name ?? table.TableDefinition.GetClusteredIndex().Column));
             }
             else
             {
