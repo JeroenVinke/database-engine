@@ -6,7 +6,7 @@ namespace DatabaseEngine
 {
     public class BlockHeader
     {
-        public List<Offset> Offsets { get; set; } = new List<Offset>();
+        public List<RecordOffset> Offsets { get; set; } = new List<RecordOffset>();
         public BlockBuffer Buffer { get; set; }
         public bool Empty { get; set; }
 
@@ -34,11 +34,7 @@ namespace DatabaseEngine
         {
             for (int i = 0; i < offsetCount; i++)
             {
-                int offsetShort = BitConverter.ToInt32(buffer.ReadBytes(4), 0);
-                Offset offset = new Offset()
-                {
-                    Bytes = offsetShort
-                };
+                RecordOffset offset = new RecordOffset(buffer.ReadBytes(8));
                 Offsets.Add(offset);
             }
         }
@@ -51,7 +47,7 @@ namespace DatabaseEngine
             bytes.AddRange(BitConverter.GetBytes(NextBlockId != null ? NextBlockId.Short : 0));
             bytes.AddRange(BitConverter.GetBytes(Offsets.Count));
 
-            foreach (Offset offset in Offsets)
+            foreach (RecordOffset offset in Offsets)
             {
                 byte[] offsetBytes = offset.GetOffsetInBytes();
                 bytes.AddRange(offsetBytes);

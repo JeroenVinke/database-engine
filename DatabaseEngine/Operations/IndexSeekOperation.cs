@@ -36,11 +36,11 @@ namespace DatabaseEngine.Operations
                 {
 
                     Block block = Table.StorageFile.ReadBlock(Table.TableDefinition, _currentNode.Values[next].Pointer);
-                    Set set = block.GetSet();
+                    Record record = block.GetRecordForRowId(_currentNode.Values[next].Pointer.Index);
 
                     _currentIndex++;
 
-                    return set.Find(_currentNode.Values[next].Pointer.Index);
+                    return new CustomTuple(Table.TableDefinition).FromRecord(record);
                 }
                 else
                 {

@@ -6,9 +6,21 @@ namespace DatabaseEngine
     {
         public int Bytes { get; set; }
 
-        internal byte[] GetOffsetInBytes()
+        public Offset(int bytes)
         {
-            return BitConverter.GetBytes(Bytes);
+            Bytes = bytes;
+        }
+
+        public Offset()
+        {
+        }
+
+        public virtual int Size => 4;
+
+        public virtual byte[] GetOffsetInBytes()
+        {
+            byte[] result = BitConverter.GetBytes(Bytes);
+            return result;
         }
     }
 }

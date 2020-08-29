@@ -1,6 +1,8 @@
-﻿using System;
+﻿using DatabaseEngine.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace DatabaseEngine.Relations
 {
@@ -13,19 +15,29 @@ namespace DatabaseEngine.Relations
         public RelationManager(StorageFile storageFile)
         {
             _storageFile = storageFile;
+        }
 
+        public void Initialize()
+        {
             LoadDefaultRelations();
             LoadRelationsFromStorage();
         }
 
         private void LoadRelationsFromStorage()
         {
-            Table tablesTable = GetTable("Tables");
-            Table columnsTable = GetTable("Columns");
-            Table indexesTable = GetTable("Indexes");
-
-            foreach (CustomTuple table in tablesTable.All())
+            foreach (CustomTuple table in Program.ExecuteQuery("SELECT * FROM Tables"))
             {
+                TableModel tableModel = new TableModel();
+
+                foreach(PropertyInfo member in typeof(TableModel).GetProperties())
+                {
+                    FromColumnAttribute fromColumn = member.GetCustomAttribute(typeof(FromColumnAttribute)) as FromColumnAttribute;
+                    if (fromColumn != null)
+                    {
+                        member.SetValue(tableModel, table.GetType().GetMethod("GetValueFor").MakeGenericMethod(member.PropertyType).Invoke(table, new object[] { fromColumn.ColumnName }));
+                    }
+                }
+
                 int relationId = table.GetValueFor<int>("Id");
 
                 TableDefinition tableDefinition = new TableDefinition
@@ -34,12 +46,12 @@ namespace DatabaseEngine.Relations
                     Name = table.GetValueFor<string>("Name")
                 };
 
-                foreach (CustomTuple column in columnsTable.All().Where(x => x.GetValueFor<int>("RelationId") == relationId))
+                foreach (CustomTuple column in Program.ExecuteQuery("SELECT * FROM Columns").Where(x => x.GetValueFor<int>("RelationId") == relationId))
                 {
                     tableDefinition.Add(new AttributeDefinition() { Name = column.GetValueFor<string>("Name"), Type = (ValueType)column.GetValueFor<int>("Type") });
                 }
 
-                foreach (CustomTuple index in indexesTable.All().Where(x => x.GetValueFor<int>("RelationId") == relationId))
+                foreach (CustomTuple index in Program.ExecuteQuery("SELECT * FROM Indexes").Where(x => x.GetValueFor<int>("RelationId") == relationId))
                 {
                     if (index.GetValueFor<bool>("IsClustered"))
                     {
@@ -115,7 +127,7 @@ namespace DatabaseEngine.Relations
             return GetTable(v) != null;
         }
 
-        public void CreateTable(TableDefinition table)
+        public Table CreateTable(TableDefinition table)
         {
             Table tablesTable = GetTable("Tables");
             Table columnsTable = GetTable("Columns");
@@ -138,6 +150,8 @@ namespace DatabaseEngine.Relations
             }
 
             Tables.Add(new Table(this, _storageFile, table, new Pointer(rootBlock)));
+
+            return Tables.Last();
         }
 
         private void CreateIndexRelation(ValueType type)

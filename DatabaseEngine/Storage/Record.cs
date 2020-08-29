@@ -8,20 +8,21 @@ namespace DatabaseEngine
     {
         public List<Offset> Offsets { get; set; } = new List<Offset>();
         public byte[] Content { get; set; }
-        public Offset OffsetInBlock { get; internal set; }
 
         public Record(Relation relation, byte[] bytes)
         {
+            int offsetBytes = 0;
             for (int i = 0; i < relation.Count(); i++)
             {
                 Offset offset = new Offset
                 {
-                    Bytes = BitConverter.ToUInt16(new byte[] { bytes[i*4], bytes[(i*4) + 1] })
+                    Bytes = BitConverter.ToInt32(new byte[] { bytes[i*4], bytes[(i*4) + 1], bytes[(i * 4) + 2], bytes[(i * 4) + 3] })
                 };
                 Offsets.Add(offset);
+                offsetBytes += offset.Size;
             }
 
-            Content = bytes.Skip(relation.Count() * 4).ToArray();
+            Content = bytes.Skip(offsetBytes).ToArray();
         }
 
         public Record()
@@ -33,7 +34,7 @@ namespace DatabaseEngine
         {
             get
             {
-                return Content.Length + (Offsets.Count * 4);
+                return ToBytes().Length;
             }
         }
 

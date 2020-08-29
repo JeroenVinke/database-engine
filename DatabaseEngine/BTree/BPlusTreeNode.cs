@@ -82,10 +82,8 @@ namespace DatabaseEngine
 
         public void WriteNode()
         {
-            if (Block == null)
-            {
-                Block = new Block(StorageFile, IndexRelation);
-            }
+            Block = new Block(StorageFile, IndexRelation);
+            Block.Page = new Pointer(Page.PageNumber, 0);
 
             foreach (BPlusTreeNodeValue value in Values)
             {
@@ -143,20 +141,6 @@ namespace DatabaseEngine
             return node;
         }
 
-        internal Pointer GetPointerFor(TKeyType value)
-        {
-            if (IsLeaf)
-            {
-                return Page;
-            }
-            else
-            {
-                Pointer target = GetTargetPointer(value);
-                BPlusTreeNode<TKeyType> node = ReadNode(target);
-                return node.GetPointerFor(value);
-            }
-        }
-
         public IBPlusTreeNode GetFirstLeaf()
         {
             if (!IsLeaf)
@@ -168,66 +152,10 @@ namespace DatabaseEngine
                 return this;
             }
         }
-        //public (BPlusTreeNodeValue, IBPlusTreeNode) GetNext(BPlusTreeNodeValue currentValue)
-        //{
-        //    if (currentValue == null)
-        //    {
-                
-
-        //        return (Values[0], this);
-        //    }
-
-        //    int nextIndex = Values.IndexOf(currentValue) + 1;
-
-        //    if (Values.Count > nextIndex)
-        //    {
-        //        return (Values[nextIndex], this);
-        //    }
-
-        //    if (Sibling != null)
-        //    {
-        //        return (Sibling.Values[0], Sibling);
-        //    }
-
-        //    return (null, null);
-        //}
-
-        public Set IndexSearch(BooleanExpressionASTNode expression)
-        {
-            return IndexSearch(new Set(IndexRelation), this);
-        }
-
-        private Set IndexSearch(Set result, BPlusTreeNode<TKeyType> node)
-        {
-            foreach (BPlusTreeNodeValue treeNodeValue in node.Values)
-            {
-                if (treeNodeValue.LeftPointer != null)
-                {
-                    IndexSearch(result, node.ReadNode(treeNodeValue.LeftPointer.Short));
-                }
-
-                if (treeNodeValue.Pointer != null)
-                {
-                    Block block = StorageFile.ReadBlock(DataRelation, treeNodeValue.Pointer);
-
-                    Set set = block.GetSet();
-
-                    CustomTuple record = set.Find(treeNodeValue.Pointer.Index);
-                    result.Add(record);
-                }
-
-                if (treeNodeValue.RightPointer != null)
-                {
-                    IndexSearch(result, node.ReadNode(treeNodeValue.RightPointer.Short));
-                }
-            }
-
-            return result;
-        }
 
         private void FillNodeFromBlock(BPlusTreeNode<TKeyType> node, Block block)
         {
-            foreach (Record record in block.Records)
+            foreach (Record record in block.GetSortedRecords())
             {
                 CustomTuple tuple = new CustomTuple(IndexRelation).FromRecord(record);
 
@@ -268,7 +196,7 @@ namespace DatabaseEngine
                 }
             }
 
-            if (block.Records.Count == 0)
+            if (block.GetSortedRecords().Count == 0)
             {
                 node.IsLeaf = true;
             }

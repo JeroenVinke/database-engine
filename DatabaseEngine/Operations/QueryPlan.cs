@@ -1,5 +1,6 @@
 ﻿using DatabaseEngine.Commands;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DatabaseEngine.Operations
 {
@@ -18,11 +19,12 @@ namespace DatabaseEngine.Operations
 
             if (Command is SelectCommand selectCommand)
             {
-                Operation input = new TableScanOperation(selectCommand.Table);
+                Operation input = GetFullTableScanOperation(selectCommand.Table);
 
                 if (selectCommand.Join != null)
                 {
-                    input = new NestedLoopJoinOperation(input, new IndexSeekOperation(selectCommand.Join.RightTable, selectCommand.Join.RightTable.GetIndex(selectCommand.Join.RightColumn)), selectCommand.Join.LeftColumn, selectCommand.Join.RightColumn);
+                    Table joinTable = selectCommand.Join.RightTable;
+                    input = new NestedLoopJoinOperation(input, GetFullTableScanOperation(joinTable, selectCommand.Join.RightColumn), selectCommand.Join.LeftColumn, selectCommand.Join.RightColumn);
                 }
 
                 if (selectCommand.Condition != null)
@@ -45,8 +47,24 @@ namespace DatabaseEngine.Operations
 
                 input.Unprepare();
             }
+            else if (Command is InsertCommand insertCommand)
+            {
+                insertCommand.Table.Insert(insertCommand.Values.ToArray());
+            }
 
             return result;
+        }
+
+        public Operation GetFullTableScanOperation(Table table, AttributeDefinition column = null)
+        {
+            if (table.TableDefinition.HasClusteredIndex())
+            {
+                return new IndexSeekOperation(table, table.GetIndex(column ?? table.TableDefinition.GetClusteredIndex().Columns.First()));
+            }
+            else
+            {
+                return new TableScanOperation(table);
+            }
         }
     }
 }

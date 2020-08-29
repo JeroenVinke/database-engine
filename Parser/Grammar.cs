@@ -20,20 +20,13 @@ namespace Compiler.Parser
                         new SubProduction(new List<ExpressionDefinition>
                         {
                             new NonTerminalExpressionDefinition { Identifier = ParserConstants.CommandRule }
-                        }),
-                        //new SubProduction(new List<ExpressionDefinition>
-                        //{
-                        //    new NonTerminalExpressionDefinition { Identifier = ParserConstants. }
-                        //}),
-                        //new SubProduction(new List<ExpressionDefinition>
-                        //{
-                        //    new NonTerminalExpressionDefinition { Identifier = ParserConstants. }
-                        //})
+                        })
                     }));
 
                     CommandRule.Initialize(ref _instance);
                     StringExpressionRule.Initialize(ref _instance);
                     SelectRule.Initialize(ref _instance);
+                    InsertRule.Initialize(ref _instance);
                     BooleanExpressionRule.Initialize(ref _instance);
                     BooleanRule.Initialize(ref _instance);
                     NumericExpressionRule.Initialize(ref _instance);

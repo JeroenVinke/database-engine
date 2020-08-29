@@ -1,4 +1,5 @@
-﻿using Compiler.Parser.SyntaxTreeNodes;
+﻿using Compiler.Common;
+using Compiler.Parser.SyntaxTreeNodes;
 using System.Collections.Generic;
 
 namespace Compiler.Parser.Rules
@@ -14,6 +15,58 @@ namespace Compiler.Parser.Rules
                     //BooleanRule(),
                     NumExpressionRule(),
                     StringRule()
+                }
+            ));
+
+            grammar.Add(new Production(ParserConstants.Factors,
+                new List<SubProduction>()
+                {
+                    new SubProduction
+                    (
+                        new List<ExpressionDefinition>
+                        {
+                            new NonTerminalExpressionDefinition { Identifier = ParserConstants.Factors },
+                            new TerminalExpressionDefinition { TokenType = TokenType.Comma },
+                            new NonTerminalExpressionDefinition { Identifier = ParserConstants.Factor },
+                            new SemanticActionDefinition((ParsingNode node) =>
+                            {
+                                List<FactorASTNode> result = new List<FactorASTNode>();
+
+                                List<FactorASTNode> factors = node.GetAttributeForKey<List<FactorASTNode>>(ParserConstants.Factors, ParserConstants.Factors);
+                                FactorASTNode factor = node.GetAttributeForKey<FactorASTNode>(ParserConstants.Factor, ParserConstants.SyntaxTreeNode);
+
+                                result.AddRange(factors);
+                                result.Add(factor);
+
+                                node.Attributes.Add(ParserConstants.Factors, result);
+                            })
+                        }
+                    ),
+                    new SubProduction
+                    (
+                        new List<ExpressionDefinition>
+                        {
+                            new NonTerminalExpressionDefinition { Identifier = ParserConstants.Factor },
+                            new SemanticActionDefinition((ParsingNode node) =>
+                            {
+                                List<FactorASTNode> factors = new List<FactorASTNode>();
+                                FactorASTNode factor = node.GetAttributeForKey<FactorASTNode>(ParserConstants.Factor, ParserConstants.SyntaxTreeNode);
+                                factors.Add(factor);
+                                node.Attributes.Add(ParserConstants.Factors, factors);
+                            })
+                        }
+                    ),
+                    new SubProduction
+                    (
+                        new List<ExpressionDefinition>
+                        {
+                            new TerminalExpressionDefinition { TokenType = TokenType.EmptyString },
+                            new SemanticActionDefinition((ParsingNode node) =>
+                            {
+                                node.Attributes.Add(ParserConstants.Factors, new List<FactorASTNode>());
+                            })
+                        }
+                    )
                 }
             ));
         }

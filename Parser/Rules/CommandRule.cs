@@ -18,6 +18,17 @@ namespace Compiler.Parser.Rules
                             node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Select, ParserConstants.SyntaxTreeNode));
                         })
                     }
+                ),
+                new SubProduction
+                (
+                    new List<ExpressionDefinition>
+                    {
+                        new NonTerminalExpressionDefinition { Identifier = ParserConstants.Insert },
+                        new SemanticActionDefinition((ParsingNode node) =>
+                        {
+                            node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Insert, ParserConstants.SyntaxTreeNode));
+                        })
+                    }
                 )
             }));
         }

@@ -8,6 +8,15 @@ namespace DatabaseEngine
     {
         public List<Index> Indexes { get; set; } = new List<Index>();
 
+        public TableDefinition()
+        {
+            //Add(new AttributeDefinition
+            //{
+            //    Name = "RowId",
+            //    Type = ValueType.Integer
+            //});
+        }
+
         public void AddClusteredIndex(List<AttributeDefinition> columns, int rootPointer)
         {
             if (HasClusteredIndex())

@@ -1,5 +1,4 @@
-﻿using Compiler.Parser.SyntaxTreeNodes;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace DatabaseEngine
 {
@@ -14,7 +13,6 @@ namespace DatabaseEngine
         List<BPlusTreeNodeValue> Values { get; set; }
         void WriteTree();
         void WriteNode();
-        Set IndexSearch(BooleanExpressionASTNode expression);
         IBPlusTreeNode GetFirstLeaf();
         IBPlusTreeNode Sibling { get; }
     }

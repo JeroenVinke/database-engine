@@ -8,17 +8,17 @@ namespace DatabaseEngine
     public class Set : IEnumerable<CustomTuple>
     {
         public Relation Relation { get; set; }
-        public List<CustomTuple> Records { get; set; }
+        public List<CustomTuple> Tuples { get; set; }
 
         public Set(Relation productRelation)
         {
             Relation = productRelation;
-            Records = new List<CustomTuple>();
+            Tuples = new List<CustomTuple>();
         }
 
         public void Add(CustomTuple tuple)
         {
-            Records.Add(tuple);
+            Tuples.Add(tuple);
         }
 
         public Set Union(Set otherSet)
@@ -86,12 +86,12 @@ namespace DatabaseEngine
 
         public IEnumerable<CustomTuple> All()
         {
-            return Records;
+            return Tuples;
         }
 
         public int Count()
         {
-            return Records.Count;
+            return Tuples.Count;
         }
 
         public Set Projection(List<string> attributeNames)
@@ -108,7 +108,7 @@ namespace DatabaseEngine
             // clone of entries weghalen?
             Set projectedSet = new Set(projectionRelation);
 
-            foreach(CustomTuple record in Records)
+            foreach(CustomTuple record in Tuples)
             {
                 CustomTuple projectedRecord = new CustomTuple(projectionRelation);
                 
@@ -128,17 +128,17 @@ namespace DatabaseEngine
 
         public CustomTuple First()
         {
-            return Records[0];
+            return Tuples[0];
         }
 
         public CustomTuple Find(int index)
         {
-            return Records[index];
+            return Tuples[index];
         }
 
         public IEnumerator<CustomTuple> GetEnumerator()
         {
-            return Records.GetEnumerator();
+            return Tuples.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

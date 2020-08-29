@@ -112,15 +112,6 @@ namespace DatabaseEngine
 
         private WriteFileCompletionDelegate CompletedDelegate;
 
-        public void Write()
-        {
-            byte[] bytes = Header.ToBytes();
-
-            NativeOverlapped overlapped = new NativeOverlapped();
-            overlapped.OffsetLow = 0;
-            WriteFileEx(_fileHandle, bytes, (uint)bytes.Length, ref overlapped, CompletedDelegate);
-        }
-
         public void WriteBlock(int pageNumber, byte[] content)
         {
             NativeOverlapped overlapped = new NativeOverlapped();

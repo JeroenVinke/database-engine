@@ -62,71 +62,40 @@ namespace DatabaseEngine
 
         private IBPlusTreeNode ClusteredIndex => _indexesWithTrees.FirstOrDefault(x => x.Key.Clustered).Value;
 
-        public void Insert(int key, object[] entries)
-        {
-            Pointer spot = ClusteredIndex.Find(key, false);
-
-            Block dataBlock;
-
-            if (spot == null)
-            {
-                Pointer freeBlock = StorageFile.GetFreeBlock();
-                dataBlock = new Block(StorageFile, TableDefinition);
-                spot = freeBlock;
-            }
-            else
-            {
-                dataBlock = StorageFile.ReadBlock(TableDefinition, spot) as Block;
-            }
-
-            CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
-            // if block has room, else create new block
-            int index = dataBlock.AddRecord(tuple.ToRecord());
-
-            Pointer indexKey = new Pointer(spot.PageNumber, index);
-            ClusteredIndex.AddValue(key, indexKey);
-
-            StorageFile.WriteBlock(spot.PageNumber, dataBlock.ToBytes());
-
-            foreach(KeyValuePair<Index, IBPlusTreeNode> indexTree in _indexesWithTrees)
-            {
-                object value = tuple.GetValueFor<object>(indexTree.Key.Columns[0].Name);
-                indexTree.Value.AddValue(value, indexKey);
-            }
-        }
-
         public void Insert(object[] entries)
         {
             CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
-            RootBlock.AddRecord(tuple.ToRecord());
+            Block block;
 
-            StorageFile.WriteBlock(RootBlock.Page.PageNumber, RootBlock.ToBytes());
-        }
-
-        internal void Write()
-        {
-            StorageFile.Write();
-            ClusteredIndex?.WriteTree();
-        }
-
-        public Set All()
-        {
             if (TableDefinition.HasClusteredIndex())
             {
-                return ClusteredIndex.IndexSearch(null);
+                object key = tuple.GetValueFor<object>(TableDefinition.GetClusteredIndex().Columns.First().Name);
+                Pointer spot = ClusteredIndex.Find(key, false);
+
+                if (spot == null)
+                {
+                    Pointer freeBlock = StorageFile.GetFreeBlock();
+                    block = new Block(StorageFile, TableDefinition);
+                    block.Page = freeBlock;
+                }
+                else
+                {
+                    block = StorageFile.ReadBlock(TableDefinition, spot) as Block;
+                }
             }
             else
             {
-                Block block = StorageFile.ReadBlock(TableDefinition, RootBlock.Page);
-                Set set = block.GetSet();
-
-                return set;
+                block = RootBlock;
             }
-        }
 
-        public Pointer Find(object id)
-        {
-            return ClusteredIndex.Find(id);
+            Pointer indexKey = block.AddRecord(tuple.ToRecord());
+
+            foreach (KeyValuePair<Index, IBPlusTreeNode> indexTree in _indexesWithTrees)
+            {
+                object value = tuple.GetValueFor<object>(indexTree.Key.Columns[0].Name);
+                indexTree.Value.AddValue(value, indexKey);
+                indexTree.Value.WriteTree();
+            }
         }
     }
 }

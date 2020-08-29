@@ -25,6 +25,9 @@
         From,
         Where,
         Join,
-        On
+        On,
+        Insert,
+        Into,
+        Values
     }
 }

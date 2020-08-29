@@ -26,5 +26,6 @@
         public const string OptionalWhere = "OptionalWhere";
         public const string CommandRule = "Command";
         public const string Join = "Join";
+        public const string Insert = "Insert";
     }
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 
 namespace DatabaseEngine
 {
@@ -90,8 +89,8 @@ namespace DatabaseEngine
             int ii = 0;
             foreach (AttributeDefinition attributeDefinition in Relation)
             {
-                Offset nextOffset = record.Offsets.Count > ii + 1 ? record.Offsets[ii + 1] : new Offset { Bytes = record.Content.Length };
-                byte[] entryBytes = record.Content.Skip(i).Take(nextOffset.Bytes - record.Offsets[ii].Bytes).ToArray();
+                int nextOffsetBytes = record.Offsets.Count > ii + 1 ? record.Offsets[ii + 1].Bytes : record.Content.Length;
+                byte[] entryBytes = record.Content.Skip(i).Take(nextOffsetBytes - record.Offsets[ii].Bytes).ToArray();
 
                 Entries.Add(CustomObject.FromBytes(entryBytes, attributeDefinition));
 

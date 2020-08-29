@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace DatabaseEngine.Operations
 {
@@ -27,7 +28,7 @@ namespace DatabaseEngine.Operations
         {
             _recordIndex++;
 
-            if (_currentBlock.Records.Count <= _recordIndex)
+            if (_currentBlock.GetSortedRecords().Count() <= _recordIndex)
             {
                 if (_currentBlock.NextBlock != null)
                 {
@@ -41,7 +42,7 @@ namespace DatabaseEngine.Operations
                 }
             }
 
-            _currentTuple = new CustomTuple(Table.TableDefinition).FromRecord(_currentBlock.Records[_recordIndex]);
+            _currentTuple = new CustomTuple(Table.TableDefinition).FromRecord(_currentBlock.GetSortedRecords()[_recordIndex]);
 
             return _currentTuple;
         }

@@ -17,6 +17,7 @@
         Select,
         From,
         String,
-        Join
+        Join,
+        Insert
     }
 }

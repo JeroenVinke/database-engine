@@ -1,15 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine
 {
     public class Block
     {
-        public Pointer Page { get; private set; }
+        public Pointer Page { get; set; }
         // header
         public BlockHeader Header { get; set; }
-        public List<Record> Records { get; set; } = new List<Record>();
-
+        private List<Record> _records { get; set; } = new List<Record>();
+        private List<Record> _sortedRecords { get; set; } = new List<Record>();
         private Block _nextBlock;
         public Block NextBlock
         { 
@@ -40,6 +41,11 @@ namespace DatabaseEngine
             }
         }
 
+        public Record GetRecordForRowId(int index)
+        {
+            return _sortedRecords[Header.Offsets.IndexOf(Header.Offsets.First(x => x.Id == index))];
+        }
+
         public Block(StorageFile storageFile, Relation relation, byte[] buffer, Pointer pageNumber)
         {
             _storageFile = storageFile;
@@ -49,35 +55,23 @@ namespace DatabaseEngine
 
             if (!Header.Empty)
             {
-                List<Record> records = new List<Record>();
+                Record[] sortedRecords = new Record[Header.Offsets.Count];
 
-                List<Offset> orderedOffsets = Header.Offsets.OrderBy(x => x.Bytes).ToList();
-
-                for (int i = 0; i < Header.Offsets.Count; i++)
+                int end = BlockSize;
+                foreach(RecordOffset offset in Header.Offsets.OrderByDescending(x => x.Bytes))
                 {
-                    Offset offset = Header.Offsets[i];
-                    Offset nextOffset = orderedOffsets.Where(x => x.Bytes > offset.Bytes).FirstOrDefault();
-
-                    byte[] recordBytes;
-
-                    if (nextOffset != null)
-                    {
-                        recordBytes = buffer.Skip(offset.Bytes).Take(nextOffset.Bytes - offset.Bytes).ToArray();
-                    }
-                    else
-                    {
-                        recordBytes = buffer.Skip(Header.Offsets[i].Bytes).ToArray();
-                    }
+                    byte[] recordBytes = buffer.Skip(offset.Bytes).Take(end - offset.Bytes).ToArray();
+                    end -= recordBytes.Length;
 
                     Record record = new Record(relation, recordBytes);
-                    record.OffsetInBlock = offset;
-                    records.Add(record);
+                    _records.Insert(0, record);
+                    sortedRecords[Header.Offsets.IndexOf(offset)] = record;
                 }
 
-                Records = records.Cast<Record>().ToList();
+                _sortedRecords = sortedRecords.ToList();
             }
 
-            _usedBytes = Header.Size + Records.Sum(x => x.Length);
+            _usedBytes = Header.Size + _records.Sum(x => x.Length);
         }
 
         public Block(StorageFile storageFile, Relation relation)
@@ -100,40 +94,27 @@ namespace DatabaseEngine
                     CustomTuple tuple = new CustomTuple(Relation).FromRecord(record);
                     int idToInsert = tuple.GetValueFor<int>(clusteredIndex);
 
-                    targetPosition = 0;
-
-                    foreach (Offset offset1 in Header.Offsets)
+                    foreach(CustomTuple existingTuple in _records.Select(x => new CustomTuple(Relation).FromRecord(x)))
                     {
-                        Record dataRecord1 = GetRecordFromOffset(offset1);
-                        CustomTuple t = new CustomTuple(Relation).FromRecord(dataRecord1);
-                        int id = t.GetValueFor<int>(clusteredIndex);
-
-                        if (id > idToInsert)
+                        if (idToInsert < existingTuple.GetValueFor<int>(clusteredIndex))
                         {
-                            break;
+                            targetPosition --;
                         }
                         else
                         {
-                            targetPosition++;
+                            return targetPosition;
                         }
                     }
                 }
-
-                return targetPosition;
             }
 
-            return Records.Count;
-        }
-
-        private Record GetRecordFromOffset(Offset offset)
-        {
-            return Records.First(x => x.OffsetInBlock.Bytes == offset.Bytes);
+            return targetPosition;
         }
 
         public Set GetSet()
         {
             Set set = new Set(Relation);
-            foreach (Record record in Records)
+            foreach (Record record in _sortedRecords)
             {
                 CustomTuple tuple = new CustomTuple(Relation);
                 tuple.FromRecord(record);
@@ -144,7 +125,7 @@ namespace DatabaseEngine
             return set;
         }
 
-        public int AddRecord(Record record)
+        public Pointer AddRecord(Record record)
         {
             Header.Empty = false;
 
@@ -169,13 +150,20 @@ namespace DatabaseEngine
                 offsetIndex = Header.Offsets.Select(x => x.Bytes).Min() - record.Length;
             }
 
-            Offset offset = new Offset() { Bytes = offsetIndex };
+            RecordOffset offset = new RecordOffset(offsetIndex, Header.Offsets.Count > 0 ? Header.Offsets.Max(x => x.Id) + 1 : 0);
             Header.Offsets.Insert(targetPosition, offset);
-            record.OffsetInBlock = offset;
-            Records.Add(record);
+            _records.Insert(0, record);
+            _sortedRecords.Insert(targetPosition, record);
 
-            _usedBytes += record.Length;
-            return targetPosition;
+            Write();
+
+            _usedBytes += record.Length + offset.Size;
+            return new Pointer(Page.PageNumber, offset.Id);
+        }
+
+        public List<Record> GetSortedRecords()
+        {
+            return _sortedRecords;
         }
 
         public byte[] ToBytes()
@@ -186,7 +174,9 @@ namespace DatabaseEngine
             headerBytes.CopyTo(byteArray, 0);
 
             int i = BlockSize;
-            foreach (Record record in Records)
+            List<Record> reversedRecords = _records.ToList();
+            reversedRecords.Reverse();
+            foreach (Record record in reversedRecords)
             {
                 byte[] recordBytes = record.ToBytes();
 
@@ -196,6 +186,11 @@ namespace DatabaseEngine
             }
 
             return byteArray;
+        }
+
+        public void Write()
+        {
+            _storageFile.WriteBlock(Page.PageNumber, ToBytes());
         }
     }
 }
