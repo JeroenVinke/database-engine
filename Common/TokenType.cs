@@ -26,6 +26,7 @@
         On,
         Insert,
         Into,
-        Values
+        Values,
+        Top
     }
 }

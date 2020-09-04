@@ -8,7 +8,7 @@ namespace DatabaseEngine
     {
         public List<RecordOffset> Offsets { get; set; } = new List<RecordOffset>();
         public BlockBuffer Buffer { get; set; }
-        public bool Empty { get; set; }
+        public bool IsFilled { get; set; }
 
         public int RelationId { get; set; }
         public Pointer NextBlockId { get; set; }
@@ -17,10 +17,10 @@ namespace DatabaseEngine
         {
             Buffer = buffer;
 
-            Empty = BitConverter.ToInt32(buffer.ReadBytes(4)) == 0;
+            IsFilled = buffer.ReadByte() == 1;
             RelationId = BitConverter.ToInt32(buffer.ReadBytes(4));
-            NextBlockId = new Pointer(BitConverter.ToInt32(buffer.ReadBytes(4)));
-            int offsetCount = BitConverter.ToInt32(buffer.ReadBytes(4), 0);
+            NextBlockId = new Pointer(BitConverter.ToUInt16(buffer.ReadBytes(4)));
+            ushort offsetCount = BitConverter.ToUInt16(buffer.ReadBytes(2), 0);
             ReadOffsets(buffer, offsetCount);
         }
 
@@ -30,11 +30,13 @@ namespace DatabaseEngine
 
         public int Size => ToBytes().Count();
 
-        private void ReadOffsets(BlockBuffer buffer, int offsetCount)
+        private void ReadOffsets(BlockBuffer buffer, ushort offsetCount)
         {
+            int recordOffsetSize = new RecordOffset(0, 0).Size;
+
             for (int i = 0; i < offsetCount; i++)
             {
-                RecordOffset offset = new RecordOffset(buffer.ReadBytes(8));
+                RecordOffset offset = new RecordOffset(buffer.ReadBytes(recordOffsetSize));
                 Offsets.Add(offset);
             }
         }
@@ -42,10 +44,10 @@ namespace DatabaseEngine
         public IEnumerable<byte> ToBytes()
         {
             List<byte> bytes = new List<byte>();
-            bytes.AddRange(BitConverter.GetBytes(Empty ? 0 : 1));
+            bytes.Add(IsFilled ? (byte)1 : (byte)0);
             bytes.AddRange(BitConverter.GetBytes(RelationId));
             bytes.AddRange(BitConverter.GetBytes(NextBlockId != null ? NextBlockId.Short : 0));
-            bytes.AddRange(BitConverter.GetBytes(Offsets.Count));
+            bytes.AddRange(BitConverter.GetBytes((ushort)Offsets.Count));
 
             foreach (RecordOffset offset in Offsets)
             {

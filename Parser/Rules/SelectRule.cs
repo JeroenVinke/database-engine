@@ -39,6 +39,21 @@ namespace Compiler.Parser.Rules
                     }
                 )
             }));
+            grammar.Add(new Production(ParserConstants.Top, new List<SubProduction>
+            {
+                GetTopRule(),
+                new SubProduction
+                (
+                    new List<ExpressionDefinition>
+                    {
+                        new TerminalExpressionDefinition { TokenType = TokenType.EmptyString },
+                        new SemanticActionDefinition((ParsingNode node) =>
+                        {
+                            node.Attributes.Add(ParserConstants.SyntaxTreeNode, null);
+                        })
+                    }
+                )
+            }));
             grammar.Add(new Production(ParserConstants.SelectColumns, new List<SubProduction>
             {
                 GetSelectColumnsRule(),
@@ -102,6 +117,25 @@ namespace Compiler.Parser.Rules
             );
         }
 
+        private static SubProduction GetTopRule()
+        {
+            return new SubProduction
+            (
+                new List<ExpressionDefinition>
+                {
+                    new TerminalExpressionDefinition { TokenType = TokenType.Top },
+                    new TerminalExpressionDefinition { Key = "Integer", TokenType = TokenType.Integer },
+                    new SemanticActionDefinition((ParsingNode node) =>
+                    {
+                        TopASTNode astNode = new TopASTNode();
+                        astNode.Amount = Convert.ToInt32(node.GetAttributeForKey<WordToken>("Integer", ParserConstants.Token).Lexeme);
+
+                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, astNode);
+                    })
+                }
+            );
+        }
+
         private static SubProduction GetSelectRule()
         {
             return new SubProduction
@@ -109,6 +143,7 @@ namespace Compiler.Parser.Rules
                 new List<ExpressionDefinition>
                 {
                     new TerminalExpressionDefinition { TokenType = TokenType.Select },
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Top },
                     new NonTerminalExpressionDefinition { Identifier = ParserConstants.SelectColumns },
                     new TerminalExpressionDefinition { TokenType = TokenType.From },
                     new NonTerminalExpressionDefinition { Identifier = ParserConstants.Identifier },
@@ -120,6 +155,7 @@ namespace Compiler.Parser.Rules
 
                         BooleanExpressionASTNode condition = node.GetAttributeForKey<BooleanExpressionASTNode>(ParserConstants.Where, ParserConstants.SyntaxTreeNode);
                         JoinASTNode join = node.GetAttributeForKey<JoinASTNode>(ParserConstants.Join, ParserConstants.SyntaxTreeNode);
+                        TopASTNode top = node.GetAttributeForKey<TopASTNode>(ParserConstants.Top, ParserConstants.SyntaxTreeNode);
 
                         FromASTNode from = new FromASTNode()
                         {
@@ -131,6 +167,7 @@ namespace Compiler.Parser.Rules
                             From = from,
                             Condition = condition,
                             Join = join,
+                            Top = top,
                             SelectColumns = node.GetAttributeForKey<List<FactorASTNode>>(ParserConstants.SelectColumns, ParserConstants.SyntaxTreeNodes)
                         });
                     })

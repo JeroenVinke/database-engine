@@ -1,4 +1,5 @@
 ﻿using Compiler.Parser.SyntaxTreeNodes;
+using DatabaseEngine.Storage;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,28 +23,29 @@ namespace DatabaseEngine
         public Pointer SiblingPointer { get; set; }
         public BPlusTreeNode<TKeyType> Parent { get; set; }
         public bool Dirty { get; set; }
-        public StorageFile StorageFile { get; set; }
+        public MemoryManager MemoryManager { get; set; }
         public Pointer Page { get; set; }
         public Block Block { get; set; }
         public bool IsLeaf { get; set; }
-        public int MaxSize { get; set; } = 3;
+        public int MaxSize { get; set; } = 4;
         public bool IsRoot { get; set; }
         public Relation IndexRelation { get; set; }
         public Relation DataRelation { get; set; }
 
-        public BPlusTreeNode(Relation indexRelation, Relation dataRelation, StorageFile storageFile, Pointer page, NodeCache<TKeyType> cache = null)
+        public BPlusTreeNode(Relation indexRelation, Relation dataRelation, MemoryManager memoryManager, Pointer page, NodeCache<TKeyType> cache = null, Block block = null)
         {
             Id = MaxId++;
+            Block = block;
             Page = page;
             IndexRelation = indexRelation;
             DataRelation = dataRelation;
-            StorageFile = storageFile;
+            MemoryManager = memoryManager;
             NodeCache = cache ?? new NodeCache<TKeyType>();
             NodeCache.Add(page.Short, this);
         }
 
 
-        private BPlusTreeNode<TKeyType> ReadNode(int pointerValue)
+        private BPlusTreeNode<TKeyType> ReadNode(uint pointerValue)
         {
             if (NodeCache.ContainsKey(pointerValue))
             {
@@ -52,22 +54,22 @@ namespace DatabaseEngine
 
             Pointer pointer = new Pointer(pointerValue);
 
-            Block block = StorageFile.ReadBlock(IndexRelation, pointer);
+            Block block = MemoryManager.Read(IndexRelation, pointer);
 
             return GetNodeFromBlock(pointer, block);
         }
 
         public void ReadNode()
         {
-            Block block = StorageFile.ReadBlock(IndexRelation, Page);
+            Block = MemoryManager.Read(IndexRelation, Page);
 
-            if (block.Header.Empty)
+            if (!Block.Header.IsFilled)
             {
                 IsLeaf = true;
                 return;
             }
 
-            FillNodeFromBlock(this, block);
+            FillNodeFromBlock(this, Block);
         }
 
         public void WriteTree()
@@ -82,8 +84,11 @@ namespace DatabaseEngine
 
         public void WriteNode()
         {
-            Block = new Block(StorageFile, IndexRelation);
-            Block.Page = new Pointer(Page.PageNumber, 0);
+            if (Block == null)
+            {
+                Block = new Block(MemoryManager, IndexRelation);
+                Block.Page = new Pointer(Page.PageNumber, 0);
+            }
 
             foreach (BPlusTreeNodeValue value in Values)
             {
@@ -96,7 +101,7 @@ namespace DatabaseEngine
                 }
                 else
                 {
-                    tuple.AddValueFor("LeftPointer", -1);
+                    tuple.AddValueFor("LeftPointer", (uint)0);
                 }
 
                 if (value.Pointer != null)
@@ -105,7 +110,7 @@ namespace DatabaseEngine
                 }
                 else
                 {
-                    tuple.AddValueFor("ValuePointer", -1);
+                    tuple.AddValueFor("ValuePointer", (uint)0);
                 }
 
                 if (IsLeaf && value == Values.Last() && SiblingPointer != null)
@@ -120,19 +125,19 @@ namespace DatabaseEngine
                     }
                     else
                     {
-                        tuple.AddValueFor("RightPointer", -1);
+                        tuple.AddValueFor("RightPointer", (uint)0);
                     }
                 }
 
                 Block.AddRecord(tuple.ToRecord());
             }
 
-            StorageFile.WriteBlock(Page.PageNumber, Block.ToBytes());
+            MemoryManager.Persist(Block);
         }
 
         private BPlusTreeNode<TKeyType> GetNodeFromBlock(Pointer pointer, Block block)
         {
-            BPlusTreeNode<TKeyType> node = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, StorageFile, pointer, NodeCache); // pointer
+            BPlusTreeNode<TKeyType> node = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, MemoryManager, pointer, NodeCache, block); // pointer
             node.NodeCache = NodeCache;
             node.Parent = this;
 
@@ -159,9 +164,9 @@ namespace DatabaseEngine
             {
                 CustomTuple tuple = new CustomTuple(IndexRelation).FromRecord(record);
 
-                int leftPointer = tuple.GetValueFor<int>("LeftPointer");
-                int valuePointer = tuple.GetValueFor<int>("ValuePointer");
-                int rightPointer = tuple.GetValueFor<int>("RightPointer");
+                uint leftPointer = tuple.GetValueFor<uint>("LeftPointer");
+                uint valuePointer = tuple.GetValueFor<uint>("ValuePointer");
+                uint rightPointer = tuple.GetValueFor<uint>("RightPointer");
 
                 BPlusTreeNodeValue value = new BPlusTreeNodeValue
                 {
@@ -185,7 +190,7 @@ namespace DatabaseEngine
 
                 node.Values.Add(value);
 
-                if (!IsLeaf && valuePointer >= 0)
+                if (valuePointer > 0)
                 {
                     node.IsLeaf = true;
 
@@ -318,7 +323,7 @@ namespace DatabaseEngine
 
         public void AddValueToSelf(BPlusTreeNodeValue value)
         {
-            int target = -1;
+            int target = 0;
 
             for (int i = 0; i < Values.Count; i++)
             {
@@ -329,7 +334,7 @@ namespace DatabaseEngine
                 }
             }
 
-            if (target == -1)
+            if (target == 0)
             {
                 Values.Add(value);
             }
@@ -381,7 +386,7 @@ namespace DatabaseEngine
 
         public BPlusTreeNode<TKeyType> AddChild()
         {
-            BPlusTreeNode<TKeyType> child = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, StorageFile, StorageFile.GetFreeBlock(), NodeCache);
+            BPlusTreeNode<TKeyType> child = new BPlusTreeNode<TKeyType>(IndexRelation, DataRelation, MemoryManager, MemoryManager.GetFreeBlock(), NodeCache);
             child.MaxSize = child.MaxSize;
             child.Parent = this;
             child.Dirty = true;

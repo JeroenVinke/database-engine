@@ -12,14 +12,15 @@ namespace DatabaseEngine
         public Record(Relation relation, byte[] bytes)
         {
             int offsetBytes = 0;
+            int offsetSize = new Offset().Size;
             for (int i = 0; i < relation.Count(); i++)
             {
                 Offset offset = new Offset
                 {
-                    Bytes = BitConverter.ToInt32(new byte[] { bytes[i*4], bytes[(i*4) + 1], bytes[(i * 4) + 2], bytes[(i * 4) + 3] })
+                    Bytes = BitConverter.ToUInt16(new byte[] { bytes[i * offsetSize], bytes[(i * offsetSize) + 1] })
                 };
                 Offsets.Add(offset);
-                offsetBytes += offset.Size;
+                offsetBytes += offsetSize;
             }
 
             Content = bytes.Skip(offsetBytes).ToArray();

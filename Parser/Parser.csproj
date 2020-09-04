@@ -10,8 +10,4 @@
     <ProjectReference Include="..\LexicalAnalyer\LexicalAnalyer.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="NewFolder\" />
-  </ItemGroup>
-
 </Project>

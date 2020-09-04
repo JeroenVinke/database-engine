@@ -37,6 +37,11 @@ namespace DatabaseEngine.Operations
                     input = new SelectOperation(input, selectCommand.Columns);
                 }
 
+                if (selectCommand.Top != null)
+                {
+                    input = new TopOperation(input, selectCommand.Top);
+                }
+
                 input.Prepare();
 
                 CustomTuple next;

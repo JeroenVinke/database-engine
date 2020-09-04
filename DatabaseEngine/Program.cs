@@ -1,6 +1,7 @@
 ﻿using DatabaseEngine.Commands;
 using DatabaseEngine.Operations;
 using DatabaseEngine.Relations;
+using DatabaseEngine.Storage;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,20 +12,22 @@ namespace DatabaseEngine
     {
         public static string StorageFilePath = $"{Directory.GetCurrentDirectory()}\\data.storage";
         public static RelationManager RelationManager { get; set; }
+        public static MemoryManager MemoryManager { get; set; }
+        public static bool Debug = true;
 
         unsafe static void Main(string[] args)
         {
             //File.Delete(StorageFilePath);
             StorageFile storageFile = new StorageFile(StorageFilePath);
 
-            RelationManager = new RelationManager(storageFile);
+            MemoryManager = new MemoryManager(storageFile);
+            RelationManager = new RelationManager(MemoryManager);
             RelationManager.Initialize();
             CreateProductsTableIfNotExists(RelationManager);
             CreateProducersTableIfNotExists(RelationManager);
-
-
-            string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
-            Console.WriteLine("Query: " + query);
+ 
+            //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
+            string query = "SELECT TOP 1000 * FROM products";
             while (!string.IsNullOrEmpty(query))
             {
                 Console.WriteLine("Executing query...");
@@ -58,15 +61,30 @@ namespace DatabaseEngine
             }
         }
 
+        public static CommandParser CommandParser { get; set; }
+
         public static List<CustomTuple> ExecuteQuery(string query)
         {
-            CommandParser commandParser = new CommandParser(RelationManager);
+            if (CommandParser == null)
+            {
+                CommandParser = new CommandParser(RelationManager);
+            }
 
-            Command command = commandParser.Parse(query);
+            if (Program.Debug)
+            {
+                Console.WriteLine("[DEBUG]: Query: " + query);
+            }
+            Command command = CommandParser.Parse(query);
 
             QueryPlan plan = new QueryPlan(command);
 
+            int reads = MemoryBuffer.Reads;
+            int writes = MemoryManager.Writes;
             List<CustomTuple> result = plan.Execute();
+            if (Program.Debug)
+            {
+                Console.WriteLine("[DEBUG]: Reads for last query: " + (MemoryBuffer.Reads - reads) + " (total: " + reads + "), writes: " + (MemoryManager.Writes - writes) + " (total: " + writes + ")");
+            }
 
             return result;
         }
@@ -118,10 +136,17 @@ namespace DatabaseEngine
 
         private static void WriteProducts()
         {
-            ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
-            ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
-            ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
-            ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
+            //ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
+            //ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
+            //ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
+            //ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
+
+            RelationManager.GetTable("products").StartBulkMode();
+            for(int i = 0; i < 1000; i++)
+            {
+                ExecuteQuery("INSERT INTO products VALUES (" + i + ", " + i + ", \"Intel\")");
+            }
+            RelationManager.GetTable("products").EndBulkMode();
         }
     }
 }

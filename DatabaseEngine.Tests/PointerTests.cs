@@ -20,7 +20,7 @@ namespace DatabaseEngine.Tests
         [Test]
         public void ShortToPointer()
         {
-            int l = new Pointer(1, 2).Short;
+            uint l = new Pointer(1, 2).Short;
             Pointer c = new Pointer(l);
 
             Assert.AreEqual(1, c.PageNumber);

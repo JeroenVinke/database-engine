@@ -162,12 +162,12 @@ namespace DatabaseEngine
             Record record = new Record();
 
             List<byte> bytes = new List<byte>();
-            int i = 0;
+            ushort i = 0;
             foreach (CustomObject entry in Entries)
             {
                 record.Offsets.Add(new Offset() { Bytes = i });
                 byte[] entryBytes = entry.ToBytes();
-                i += entryBytes.Length;
+                i += (ushort)entryBytes.Length;
                 bytes.AddRange(entryBytes);
             }
 

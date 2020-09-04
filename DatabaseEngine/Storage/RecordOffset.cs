@@ -6,20 +6,20 @@ namespace DatabaseEngine
 {
     public class RecordOffset : Offset
     {
-        public int Id { get; set; }
+        public ushort Id { get; set; }
 
-        public RecordOffset(int bytes, int id) : base(bytes)
+        public RecordOffset(ushort bytes, ushort id) : base(bytes)
         {
             Id = id;
         }
 
         public RecordOffset(byte[] bytes)
         {
-            Bytes = BitConverter.ToInt32(bytes.Take(4).ToArray(), 0);
-            Id = BitConverter.ToInt32(bytes.Skip(4).Take(4).ToArray(), 0);
+            Bytes = BitConverter.ToUInt16(bytes.Take(2).ToArray(), 0);
+            Id = BitConverter.ToUInt16(bytes.Skip(2).Take(2).ToArray(), 0);
         }
 
-        public override int Size => 8;
+        public override int Size => 4;
 
         public override byte[] GetOffsetInBytes()
         {

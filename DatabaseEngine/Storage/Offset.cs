@@ -4,9 +4,9 @@ namespace DatabaseEngine
 {
     public class Offset
     {
-        public int Bytes { get; set; }
+        public ushort Bytes { get; set; }
 
-        public Offset(int bytes)
+        public Offset(ushort bytes)
         {
             Bytes = bytes;
         }
@@ -15,7 +15,7 @@ namespace DatabaseEngine
         {
         }
 
-        public virtual int Size => 4;
+        public virtual int Size => 2;
 
         public virtual byte[] GetOffsetInBytes()
         {

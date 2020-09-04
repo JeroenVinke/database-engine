@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 namespace DatabaseEngine.Operations
 {
@@ -35,7 +34,7 @@ namespace DatabaseEngine.Operations
                 if (_currentNode.Values.Count > next)
                 {
 
-                    Block block = Table.StorageFile.ReadBlock(Table.TableDefinition, _currentNode.Values[next].Pointer);
+                    Block block = Table.MemoryManager.Read(Table.TableDefinition, _currentNode.Values[next].Pointer);
                     Record record = block.GetRecordForRowId(_currentNode.Values[next].Pointer.Index);
 
                     _currentIndex++;

@@ -1,15 +1,16 @@
-﻿using System;
+﻿using DatabaseEngine.Storage;
+using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace DatabaseEngine
 {
-    public class StorageFile
+    public class StorageFile : IDisposable
     {
         public FileHeader Header { get; set; }
         private IntPtr _fileHandle;
-        public const int HeaderBlock = 0;
-        public const int RootBlock = 1;
+        public const uint HeaderBlock = 0;
+        public const uint RootBlock = 1;
 
         public enum NativeFileAccess : uint
         {
@@ -72,6 +73,16 @@ namespace DatabaseEngine
             Header = new FileHeader(this);
         }
 
+        public void WriteHeader()
+        {
+            WriteBlock(StorageFile.HeaderBlock, Header.ToBytes());
+        }
+
+        public void Dispose()
+        {
+            WriteHeader();
+        }
+
         private IntPtr OpenOrCreateFile(string filePath)
         {
             IntPtr fileHandle = CreateFile(filePath,
@@ -85,10 +96,10 @@ namespace DatabaseEngine
             return fileHandle;
         }
 
-        public byte[] GetBlockBytes(int pageNumber)
+        public byte[] GetBlockBytes(uint pageNumber)
         {
             NativeOverlapped overlapped = new NativeOverlapped();
-            overlapped.OffsetLow = Block.BlockSize * pageNumber;
+            overlapped.OffsetLow = (int)(Block.BlockSize * pageNumber);
             byte[] buffer = new byte[Block.BlockSize];
             uint readBytes;
             ReadFile(_fileHandle, buffer, (uint)Block.BlockSize, out readBytes, ref overlapped);
@@ -96,11 +107,25 @@ namespace DatabaseEngine
             return buffer;
         }
 
-        public Block ReadBlock(Relation relation, Pointer pageNumber)
+        public Block ReadBlock(MemoryManager memoryManager, Relation relation, Pointer pageNumber)
         {
             byte[] buffer = GetBlockBytes(pageNumber.PageNumber);
 
-            return new Block(this, relation, buffer, pageNumber);
+            return new Block(memoryManager, relation, buffer, pageNumber);
+        }
+
+        private WriteFileCompletionDelegate CompletedDelegate;
+
+        private void WriteBlock(uint pageNumber, byte[] content)
+        {
+            NativeOverlapped overlapped = new NativeOverlapped();
+            overlapped.OffsetLow = (int)(pageNumber * Block.BlockSize);
+            WriteFileEx(_fileHandle, content, (uint)content.Length, ref overlapped, CompletedDelegate);
+        }
+
+        public void WriteBlock(Block block)
+        {
+            WriteBlock(block.Page.PageNumber, block.ToBytes());
         }
 
         public Pointer GetFreeBlock()
@@ -108,15 +133,6 @@ namespace DatabaseEngine
             Header.FirstFreeBlock++;
             // free block pointer bijhouden in file header
             return new Pointer(Header.FirstFreeBlock, 0);
-        }
-
-        private WriteFileCompletionDelegate CompletedDelegate;
-
-        public void WriteBlock(int pageNumber, byte[] content)
-        {
-            NativeOverlapped overlapped = new NativeOverlapped();
-            overlapped.OffsetLow = (pageNumber) * Block.BlockSize;
-            WriteFileEx(_fileHandle, content, (uint)content.Length, ref overlapped, CompletedDelegate);
         }
 
         private void Completed(uint dwErrorCode, uint dwNumberOfBytesTransfered, ref NativeOverlapped lpOverlapped)

@@ -9,15 +9,10 @@ namespace DatabaseEngine
     {
         public List<Index> Indexes { get; set; } = new List<Index>();
         [FromColumn("RootBlockId")]
-        public int RootBlockId { get; set; }
+        public uint RootBlockId { get; set; }
 
         public TableDefinition()
         {
-            //Add(new AttributeDefinition
-            //{
-            //    Name = "RowId",
-            //    Type = ValueType.Integer
-            //});
         }
 
         public Index GetClusteredIndex()

@@ -2,27 +2,27 @@
 {
     public class Pointer
     {
-        public int PageNumber { get; set; }
-        public int Index { get; set; }
-        public int Short
+        public uint PageNumber { get; set; }
+        public uint Index { get; set; }
+        public uint Short
         {
             get
             {
-                return (int)((PageNumber << 16) ^ Index);
+                return (uint)((PageNumber << 16) ^ Index);
             }
         }
 
-        public Pointer(int pageNumber, int index)
+        public Pointer(uint pageNumber, uint index)
         {
             PageNumber = pageNumber;
             Index = index;
         }
 
-        public Pointer(int value)
+        public Pointer(uint value)
         {
-            PageNumber = (int)((value >> 16));
+            PageNumber = value >> 16;
 
-            Index = (int)(value & 0x00FF);
+            Index = value & 0x00FF;
         }
     }
 }

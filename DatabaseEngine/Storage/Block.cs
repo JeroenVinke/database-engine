@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DatabaseEngine.Storage;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -18,17 +19,16 @@ namespace DatabaseEngine
             {
                 if (_nextBlock == null && Header.NextBlockId != null && Header.NextBlockId.Short > 0)
                 {
-                    _nextBlock = _storageFile.ReadBlock(Relation, Header.NextBlockId);
+                    _nextBlock = _memoryManager.Read(Relation, Header.NextBlockId);
                 }
 
                 return _nextBlock;
             }
         }
 
-        private StorageFile _storageFile;
+        private MemoryManager _memoryManager;
 
         public const int BlockSize = 4096;
-        private int _usedBytes;
 
         private Relation _relation;
         public Relation Relation
@@ -41,19 +41,25 @@ namespace DatabaseEngine
             }
         }
 
-        public Record GetRecordForRowId(int index)
+        public int UsedBytes => Header.Size + _records.Sum(x => x.Length);
+
+        public Record GetRecordForRowId(uint index)
         {
+            if (!Header.Offsets.Any(x => x.Id == index) && NextBlock != null)
+            {
+                return NextBlock.GetRecordForRowId(index - Header.Offsets.Max(x => x.Id));
+            }
             return _sortedRecords[Header.Offsets.IndexOf(Header.Offsets.First(x => x.Id == index))];
         }
 
-        public Block(StorageFile storageFile, Relation relation, byte[] buffer, Pointer pageNumber)
+        public Block(MemoryManager memoryManager, Relation relation, byte[] buffer, Pointer pageNumber)
         {
-            _storageFile = storageFile;
+            _memoryManager = memoryManager;
             Page = pageNumber;
             Header = new BlockHeader(new BlockBuffer(buffer));
             Relation = relation;
 
-            if (!Header.Empty)
+            if (Header.IsFilled)
             {
                 Record[] sortedRecords = new Record[Header.Offsets.Count];
 
@@ -70,13 +76,12 @@ namespace DatabaseEngine
 
                 _sortedRecords = sortedRecords.ToList();
             }
-
-            _usedBytes = Header.Size + _records.Sum(x => x.Length);
         }
 
-        public Block(StorageFile storageFile, Relation relation)
+
+        public Block(MemoryManager memoryManager, Relation relation)
         {
-            _storageFile = storageFile;
+            _memoryManager = memoryManager;
             Header = new BlockHeader();
             Relation = relation;
         }
@@ -125,40 +130,41 @@ namespace DatabaseEngine
             return set;
         }
 
-        public Pointer AddRecord(Record record)
+        public (Pointer, Block) AddRecord(Record record)
         {
-            Header.Empty = false;
+            Header.IsFilled = true;
 
-            if (NextBlock != null || (BlockSize - _usedBytes) < (record.Length + 4))
+            if (NextBlock != null || (BlockSize - (UsedBytes + record.Length + new RecordOffset(0, 0).Size)) <= 0)
             {
                 if (NextBlock == null)
                 {
-                    Header.NextBlockId = _storageFile.GetFreeBlock();
+                    Header.NextBlockId = _memoryManager.GetFreeBlock();
+                    _nextBlock = new Block(_memoryManager, Relation);
+                    _nextBlock.Page = Header.NextBlockId;
                 }
                 return NextBlock.AddRecord(record);
             }
 
             int targetPosition = DetermineOffsetPositionForRecord(record);
 
-            int offsetIndex;
+            ushort offsetIndex;
             if (Header.Offsets.Count == 0)
             {
-                offsetIndex = BlockSize - record.Length;
+                offsetIndex = (ushort)(BlockSize - record.Length);
             }
             else
             {
-                offsetIndex = Header.Offsets.Select(x => x.Bytes).Min() - record.Length;
+                offsetIndex = (ushort)(Header.Offsets.Select(x => x.Bytes).Min() - record.Length);
             }
 
-            RecordOffset offset = new RecordOffset(offsetIndex, Header.Offsets.Count > 0 ? Header.Offsets.Max(x => x.Id) + 1 : 0);
+            RecordOffset offset = new RecordOffset((ushort)offsetIndex, Header.Offsets.Count > 0 ? (ushort)(Header.Offsets.Max(x => x.Id) + 1) : (ushort)0);
             Header.Offsets.Insert(targetPosition, offset);
             _records.Insert(0, record);
             _sortedRecords.Insert(targetPosition, record);
 
-            Write();
+            CheckMaxSize();
 
-            _usedBytes += record.Length + offset.Size;
-            return new Pointer(Page.PageNumber, offset.Id);
+            return (new Pointer(Page.PageNumber, offset.Id), this);
         }
 
         public List<Record> GetSortedRecords()
@@ -166,8 +172,19 @@ namespace DatabaseEngine
             return _sortedRecords;
         }
 
+        private void CheckMaxSize()
+        {
+            var x = UsedBytes;
+            if (x >= BlockSize)
+            {
+                throw new Exception();
+            }
+        }
+
         public byte[] ToBytes()
         {
+            CheckMaxSize();
+
             byte[] headerBytes = Header.ToBytes().ToArray();
 
             byte[] byteArray = new byte[BlockSize];
@@ -190,7 +207,7 @@ namespace DatabaseEngine
 
         public void Write()
         {
-            _storageFile.WriteBlock(Page.PageNumber, ToBytes());
+            _memoryManager.Persist(this);
         }
     }
 }

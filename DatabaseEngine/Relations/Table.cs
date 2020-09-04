@@ -1,4 +1,5 @@
 ﻿using DatabaseEngine.Relations;
+using DatabaseEngine.Storage;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,14 +8,17 @@ namespace DatabaseEngine
     public class Table
     {
         public Block RootBlock { get; set; }
-        public StorageFile StorageFile { get; set; }
+        public MemoryManager MemoryManager { get; set; }
         public TableDefinition TableDefinition { get; set; }
         private RelationManager _relationManager;
         private Dictionary<Index, IBPlusTreeNode> _indexesWithTrees = new Dictionary<Index, IBPlusTreeNode>();
+        public bool BulkMode { get; set; }
+        private IBPlusTreeNode ClusteredIndex => _indexesWithTrees.SingleOrDefault(x => x.Key.IsClustered).Value;
+        private Dictionary<uint, Block> _bulkBlocks = new Dictionary<uint, Block>();
 
-        public Table(RelationManager relationManager, StorageFile storageFile, TableDefinition tableDefinition, Pointer rootBlock)
+        public Table(RelationManager relationManager, MemoryManager memoryManager, TableDefinition tableDefinition, Pointer rootBlock)
         {
-            StorageFile = storageFile;
+            MemoryManager = memoryManager;
             TableDefinition = tableDefinition;
             _relationManager = relationManager;
 
@@ -25,7 +29,7 @@ namespace DatabaseEngine
             }
             else
             {
-                RootBlock = storageFile.ReadBlock(tableDefinition, rootBlock);
+                RootBlock = memoryManager.Read(tableDefinition, rootBlock);
             }
 
             foreach(Index index in TableDefinition.NonClusteredIndexes())
@@ -47,11 +51,11 @@ namespace DatabaseEngine
 
             if (valueType == ValueType.String)
             {
-                node = new BPlusTreeNode<string>(_relationManager.GetRelation(Constants.StringIndexRelationId), TableDefinition, StorageFile, rootBlock);
+                node = new BPlusTreeNode<string>(_relationManager.GetRelation(Constants.StringIndexRelationId), TableDefinition, MemoryManager, rootBlock);
             }
-            else if (valueType == ValueType.Integer)
+            else if (valueType == ValueType.Integer || valueType == ValueType.UnsignedInteger)
             {
-                node = new BPlusTreeNode<int>(_relationManager.GetRelation(Constants.IntIndexRelationId), TableDefinition, StorageFile, rootBlock);
+                node = new BPlusTreeNode<int>(_relationManager.GetRelation(Constants.IntIndexRelationId), TableDefinition, MemoryManager, rootBlock);
             }
 
             node.IsRoot = true;
@@ -59,8 +63,6 @@ namespace DatabaseEngine
 
             return node;
         }
-
-        private IBPlusTreeNode ClusteredIndex => _indexesWithTrees.FirstOrDefault(x => x.Key.IsClustered).Value;
 
         public void Insert(object[] entries)
         {
@@ -74,13 +76,24 @@ namespace DatabaseEngine
 
                 if (spot == null)
                 {
-                    Pointer freeBlock = StorageFile.GetFreeBlock();
-                    block = new Block(StorageFile, TableDefinition);
+                    Pointer freeBlock = MemoryManager.GetFreeBlock();
+                    block = new Block(MemoryManager, TableDefinition);
                     block.Page = freeBlock;
+
+                    AddBulkBlock(block);
                 }
                 else
                 {
-                    block = StorageFile.ReadBlock(TableDefinition, spot) as Block;
+                    if (BulkMode && _bulkBlocks.TryGetValue(spot.Short, out Block foundBlockInCache))
+                    {
+                        block = foundBlockInCache;
+                    }
+                    else
+                    {
+                        block = MemoryManager.Read(TableDefinition, spot) as Block;
+
+                        AddBulkBlock(block);
+                    }
                 }
             }
             else
@@ -88,14 +101,64 @@ namespace DatabaseEngine
                 block = RootBlock;
             }
 
-            Pointer indexKey = block.AddRecord(tuple.ToRecord());
+            (Pointer indexKey, Block targetBlock) = block.AddRecord(tuple.ToRecord());
+
+            if (!BulkMode)
+            {
+                targetBlock.Write();
+            }
+            else
+            {
+                AddBulkBlock(targetBlock);
+                AddBulkBlock(block);
+            }
 
             foreach (KeyValuePair<Index, IBPlusTreeNode> indexTree in _indexesWithTrees)
             {
                 object value = tuple.GetValueFor<object>(indexTree.Key.Column);
                 indexTree.Value.AddValue(value, indexKey);
+                if (!BulkMode)
+                {
+                    indexTree.Value.WriteTree();
+                }
+            }
+        }
+
+        private void AddBulkBlock(Block block)
+        {
+            if (BulkMode)
+            {
+                if (!_bulkBlocks.ContainsKey(block.Page.Short))
+                {
+                    _bulkBlocks.Add(block.Page.Short, block);
+                }
+            }
+        }
+
+        public void StartBulkMode()
+        {
+            if (BulkMode)
+            {
+                EndBulkMode();
+            }
+            BulkMode = true;
+        }
+
+        public void EndBulkMode()
+        {
+            foreach(Block bulkBlock in _bulkBlocks.Values)
+            {
+                bulkBlock.Write();
+            }
+
+            _bulkBlocks.Clear();
+
+            foreach (KeyValuePair<Index, IBPlusTreeNode> indexTree in _indexesWithTrees)
+            {
                 indexTree.Value.WriteTree();
             }
+
+            BulkMode = false;
         }
     }
 }

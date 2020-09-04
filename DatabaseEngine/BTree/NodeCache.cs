@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DatabaseEngine
 {
-    public class NodeCache<TKeyType> : Dictionary<int, BPlusTreeNode<TKeyType>> where TKeyType : IComparable
+    public class NodeCache<TKeyType> : Dictionary<uint, BPlusTreeNode<TKeyType>> where TKeyType : IComparable
     {
     }
 }

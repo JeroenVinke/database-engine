@@ -13,20 +13,20 @@ namespace DatabaseEngine.Commands
     {
         private RelationManager _relationManager;
 
+        public BottomUpParser Parser { get; set; }
+
         public CommandParser(RelationManager relationManager)
         {
             _relationManager = relationManager;
+            Parser = new BottomUpParser();
         }
 
         public Command Parse(string query)
         {
             LexicalAnalyzer analyzer = new LexicalAnalyzer(LexicalLanguage.GetLanguage(), query);
-            BottomUpParser parser = new BottomUpParser(analyzer);
+            Parser.Parse(analyzer);
 
-            parser.Parse();
-            parser.OutputDebugFiles();
-
-            SyntaxTreeNode command = parser.TopLevelAST;
+            SyntaxTreeNode command = Parser.TopLevelAST;
 
             if (command is SelectASTNode selectCommandAST)
             {
@@ -37,7 +37,8 @@ namespace DatabaseEngine.Commands
                     Table = table,
                     Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition),
                     Join = JoinNodeToJoin(table, selectCommandAST.Join),
-                    Columns = SelectColumnsToColumns(table, selectCommandAST.SelectColumns)
+                    Columns = SelectColumnsToColumns(table, selectCommandAST.SelectColumns),
+                    Top = selectCommandAST?.Top?.Amount
                 };
 
                 return selectCommand;

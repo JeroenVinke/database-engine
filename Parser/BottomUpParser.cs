@@ -52,6 +52,20 @@ namespace Compiler.Parser
             return Dotify(CanonicalSets.First());
         }
 
+        public BottomUpParser Parse(LexicalAnalyzer lexicalAnalyzer)
+        {
+            Current = null;
+            Stack.Clear();
+            ParsingNodes.Clear();
+            TopLevelAST = null;
+
+            LexicalAnalyzer = lexicalAnalyzer;
+
+            Parse();
+
+            return this;
+        }
+
         public BottomUpParser Parse()
         {
             if (DebugModeEnabled)

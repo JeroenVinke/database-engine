@@ -11,7 +11,7 @@ namespace DatabaseEngine
         [FromColumn("IsClustered")]
         public bool IsClustered { get; set; }
         [FromColumn("RootBlockId")]
-        public int RootBlockId { get; set; }
+        public uint RootBlockId { get; set; }
         public Pointer RootPointer
         {
             get

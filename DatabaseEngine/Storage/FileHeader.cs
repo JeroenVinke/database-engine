@@ -8,15 +8,15 @@ namespace DatabaseEngine
     {
         private StorageFile _storageFile;
 
-        public const int DefaultFirstBlock = 4;
-        public int FirstFreeBlock { get; set; } = DefaultFirstBlock;
+        public const int DefaultFirstBlock = 5;
+        public uint FirstFreeBlock { get; set; } = DefaultFirstBlock;
 
         public FileHeader(StorageFile storageFile)
         {
             _storageFile = storageFile;
 
             BlockBuffer buffer = Read();
-            FirstFreeBlock = buffer.ReadByte();
+            FirstFreeBlock = BitConverter.ToUInt32(buffer.ReadBytes(4));
 
             if (FirstFreeBlock == 0)
             {
@@ -31,7 +31,7 @@ namespace DatabaseEngine
 
         public byte[] ToBytes()
         {
-            return BitConverter.GetBytes(FirstFreeBlock);
+            return BitConverter.GetBytes((uint)FirstFreeBlock);
         }
     }
 }

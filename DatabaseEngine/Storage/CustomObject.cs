@@ -34,6 +34,8 @@ namespace DatabaseEngine
                     return System.Text.Encoding.UTF8.GetBytes((string)Value);
                 case ValueType.Integer:
                     return BitConverter.GetBytes((int)Value);
+                case ValueType.UnsignedInteger:
+                    return BitConverter.GetBytes((uint)Value);
                 case ValueType.Boolean:
                     return BitConverter.GetBytes((bool)Value);
             }
@@ -55,6 +57,9 @@ namespace DatabaseEngine
                     break;
                 case ValueType.Integer:
                     obj.Value = BitConverter.ToInt32(entryBytes, 0);
+                    break;
+                case ValueType.UnsignedInteger:
+                    obj.Value = BitConverter.ToUInt32(entryBytes, 0);
                     break;
                 case ValueType.Boolean:
                     obj.Value = BitConverter.ToBoolean(entryBytes, 0);

@@ -1,4 +1,5 @@
 ﻿using DatabaseEngine.Models;
+using DatabaseEngine.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,13 +9,13 @@ namespace DatabaseEngine.Relations
 {
     public class RelationManager
     {
-        private StorageFile _storageFile;
-        public static List<Relation> Relations = new List<Relation>();
-        public static List<Table> Tables = new List<Table>();
+        private MemoryManager _memoryManager;
+        public List<Relation> Relations = new List<Relation>();
+        public List<Table> Tables = new List<Table>();
 
-        public RelationManager(StorageFile storageFile)
+        public RelationManager(MemoryManager memoryManager)
         {
-            _storageFile = storageFile;
+            _memoryManager = memoryManager;
         }
 
         public void Initialize()
@@ -41,7 +42,7 @@ namespace DatabaseEngine.Relations
                 }
 
                 Relations.Add(tableDefinition);
-                Tables.Add(new Table(this, _storageFile, tableDefinition, new Pointer(tableDefinition.RootBlockId)));
+                Tables.Add(new Table(this, _memoryManager, tableDefinition, new Pointer(tableDefinition.RootBlockId)));
             }
         }
 
@@ -59,7 +60,7 @@ namespace DatabaseEngine.Relations
             };
             TablesTable.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
             TablesTable.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
-            TablesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.Integer });
+            TablesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
             Relations.Add(TablesTable);
 
 
@@ -82,16 +83,16 @@ namespace DatabaseEngine.Relations
             IndexesTable.Add(new AttributeDefinition() { Name = "RelationId", Type = ValueType.Integer });
             IndexesTable.Add(new AttributeDefinition() { Name = "IsClustered", Type = ValueType.Boolean });
             IndexesTable.Add(new AttributeDefinition() { Name = "Column", Type = ValueType.String });
-            IndexesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.Integer });
+            IndexesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
             Relations.Add(IndexesTable);
-
-            Table tablesTable = new Table(this, _storageFile, TablesTable, new Pointer(0, 0));
+            
+            Table tablesTable = new Table(this, _memoryManager, TablesTable, new Pointer(1, 0));
             Tables.Add(tablesTable);
 
-            Table columnsTable = new Table(this, _storageFile, ColumnsTable, new Pointer(1, 0));
+            Table columnsTable = new Table(this, _memoryManager, ColumnsTable, new Pointer(2, 0));
             Tables.Add(columnsTable);
 
-            Table indexesTable = new Table(this, _storageFile, IndexesTable, new Pointer(2, 0));
+            Table indexesTable = new Table(this, _memoryManager, IndexesTable, new Pointer(3, 0));
             Tables.Add(indexesTable);
         }
 
@@ -106,7 +107,7 @@ namespace DatabaseEngine.Relations
             Table columnsTable = GetTable("Columns");
             Table indexesTable = GetTable("Indexes");
 
-            int rootBlock = _storageFile.GetFreeBlock().Short;
+            uint rootBlock = _memoryManager.GetFreeBlock().Short;
 
             tablesTable.Insert(new object[] { table.Id, table.Name, rootBlock });
 
@@ -117,12 +118,12 @@ namespace DatabaseEngine.Relations
 
             foreach(Index index in table.GetIndexes())
             {
-                index.RootPointer = index.IsClustered ? new Pointer(rootBlock): _storageFile.GetFreeBlock();
+                index.RootPointer = index.IsClustered ? new Pointer(rootBlock): _memoryManager.GetFreeBlock();
 
                 indexesTable.Insert(new object[] { table.Id, index.IsClustered, index.Column, index.RootPointer.Short});
             }
 
-            Tables.Add(new Table(this, _storageFile, table, new Pointer(rootBlock)));
+            Tables.Add(new Table(this, _memoryManager, table, new Pointer(rootBlock)));
 
             return Tables.Last();
         }
@@ -136,6 +137,9 @@ namespace DatabaseEngine.Relations
                 case ValueType.Integer:
                     id = Constants.IntIndexRelationId;
                     break;
+                case ValueType.UnsignedInteger:
+                    id = Constants.IntIndexRelationId;
+                    break;
                 case ValueType.String:
                     id = Constants.StringIndexRelationId;
                     break;
@@ -145,9 +149,9 @@ namespace DatabaseEngine.Relations
             {
                 Relation indexRelation = new Relation() { Name = "IndexRelation", Id = id };
                 indexRelation.Add(new AttributeDefinition() { Name = "Value", Type = type });
-                indexRelation.Add(new AttributeDefinition() { Name = "LeftPointer", Type = ValueType.Integer });
-                indexRelation.Add(new AttributeDefinition() { Name = "ValuePointer", Type = ValueType.Integer });
-                indexRelation.Add(new AttributeDefinition() { Name = "RightPointer", Type = ValueType.Integer });
+                indexRelation.Add(new AttributeDefinition() { Name = "LeftPointer", Type = ValueType.UnsignedInteger });
+                indexRelation.Add(new AttributeDefinition() { Name = "ValuePointer", Type = ValueType.UnsignedInteger });
+                indexRelation.Add(new AttributeDefinition() { Name = "RightPointer", Type = ValueType.UnsignedInteger });
                 Relations.Add(indexRelation);
             }
         }
