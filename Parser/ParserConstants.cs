@@ -16,6 +16,7 @@
         public const string NumericExpression = "NumericExpression";
         public const string Type = "Type";
         public const string Factors = "Factors";
+        public const string FactorTerm = "FactorTerm";
         public const string NumericFactor = "NumericFactor";
         public const string NumericTerm = "NumericTerm";
         public const string BooleanTerm = "BooleanTerm";

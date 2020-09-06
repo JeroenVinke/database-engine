@@ -2,7 +2,7 @@
 
 namespace Compiler.Parser.SyntaxTreeNodes
 {
-    public class SelectASTNode : SyntaxTreeNode
+    public class SelectASTNode : FactorASTNode
     {
         public List<FactorASTNode> SelectColumns { get; set; }
         public FromASTNode From { get; set; }

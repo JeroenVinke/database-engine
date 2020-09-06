@@ -65,6 +65,10 @@ namespace Compiler.Parser.Rules
                         {
                             relOp = RelOp.GreaterOrEqualThan;
                         }
+                        else if (relOpToken.ToLower() == "in")
+                        {
+                            relOp = RelOp.In;
+                        }
                         else
                         {
                             throw new Exception();
@@ -90,49 +94,6 @@ namespace Compiler.Parser.Rules
                     new SemanticActionDefinition((ParsingNode node) =>
                     {
                         node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.BooleanTerm, ParserConstants.SyntaxTreeNode));
-                    })
-                }
-            );
-        }
-
-        private static SubProduction IdentifierRule()
-        {
-            return new SubProduction
-            (
-                new List<ExpressionDefinition>
-                {
-                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Identifier },
-                    new SemanticActionDefinition((ParsingNode node) =>
-                    {
-                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Identifier, ParserConstants.SyntaxTreeNode));
-                    })
-                }
-            );
-        }
-
-        private static SubProduction EmptyRule()
-        {
-            return new SubProduction
-            (
-                new List<ExpressionDefinition>
-                {
-                    new TerminalExpressionDefinition { TokenType = TokenType.EmptyString },
-                    new SemanticActionDefinition((ParsingNode node) => {
-                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttribute<BooleanExpressionASTNode>("inh"));
-                    })
-                }
-            );
-        }
-
-        private static SubProduction BooleanRule()
-        {
-            return new SubProduction
-            (
-                new List<ExpressionDefinition>
-                {
-                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Boolean },
-                    new SemanticActionDefinition((ParsingNode node) => {
-                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Boolean, ParserConstants.SyntaxTreeNode));
                     })
                 }
             );

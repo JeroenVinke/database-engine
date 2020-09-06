@@ -25,9 +25,10 @@ namespace DatabaseEngine
             RelationManager.Initialize();
             CreateProductsTableIfNotExists(RelationManager);
             CreateProducersTableIfNotExists(RelationManager);
- 
+
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
-            string query = "SELECT TOP 1000 * FROM products";
+            //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Id FROM producers WHERE Id = 2)";
+            string query = "SELECT TOP 1000 * FROM products WHERE products.Producer";
             while (!string.IsNullOrEmpty(query))
             {
                 Console.WriteLine("Executing query...");
@@ -136,17 +137,17 @@ namespace DatabaseEngine
 
         private static void WriteProducts()
         {
-            //ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
-            //ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
-            //ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
-            //ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
+            ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
+            ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
+            ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
+            ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
 
-            RelationManager.GetTable("products").StartBulkMode();
-            for(int i = 0; i < 1000; i++)
-            {
-                ExecuteQuery("INSERT INTO products VALUES (" + i + ", " + i + ", \"Intel\")");
-            }
-            RelationManager.GetTable("products").EndBulkMode();
+            //RelationManager.GetTable("products").StartBulkMode();
+            //for(int i = 0; i < 1000; i++)
+            //{
+            //    ExecuteQuery("INSERT INTO products VALUES (" + i + ", " + i + ", \"Intel\")");
+            //}
+            //RelationManager.GetTable("products").EndBulkMode();
         }
     }
 }

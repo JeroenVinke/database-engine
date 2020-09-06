@@ -28,35 +28,7 @@ namespace DatabaseEngine.Commands
 
             SyntaxTreeNode command = Parser.TopLevelAST;
 
-            if (command is SelectASTNode selectCommandAST)
-            {
-                Table table = _relationManager.GetTable(selectCommandAST.From.Identifier.Identifier);
-
-                SelectCommand selectCommand = new SelectCommand
-                {
-                    Table = table,
-                    Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition),
-                    Join = JoinNodeToJoin(table, selectCommandAST.Join),
-                    Columns = SelectColumnsToColumns(table, selectCommandAST.SelectColumns),
-                    Top = selectCommandAST?.Top?.Amount
-                };
-
-                return selectCommand;
-            }
-            else if (command is InsertASTNode insertCommandAST)
-            {
-                Table table = _relationManager.GetTable(insertCommandAST.Into.Identifier);
-
-                InsertCommand insertCommand = new InsertCommand
-                {
-                    Table = table,
-                    Values = insertCommandAST.Arguments.Select(x => GetValueFromFactor(x)).ToList()
-                };
-
-                return insertCommand;
-            }
-
-            return null;
+            return GetCommand(command);
         }
 
         private List<AttributeDefinition> SelectColumnsToColumns(Table table, List<FactorASTNode> selectColumns)
@@ -163,6 +135,51 @@ namespace DatabaseEngine.Commands
             else if (node is NumberASTNode intASTNode)
             {
                 return intASTNode.Value;
+            }
+            else if (node is SelectASTNode selectASTNode)
+            {
+                return GetCommand(selectASTNode);
+            }
+
+            return null;
+        }
+
+        private Command GetCommand(SyntaxTreeNode astNode)
+        {
+            if (astNode is SelectASTNode selectCommandAST)
+            {
+                Table table = _relationManager.GetTable(selectCommandAST.From.Identifier.Identifier);
+
+                List<Table> selectList = new List<Table>();
+                selectList.Add(table);
+
+                if (selectCommandAST.Join != null)
+                {
+                    selectList.Add(_relationManager.GetTable(selectCommandAST.Join.TargetTable.Identifier));
+                }
+
+                SelectCommand selectCommand = new SelectCommand
+                {
+                    SelectList = selectList,
+                    Condition = BooleanExpressionToCondition(table.TableDefinition, selectCommandAST.Condition),
+                    Join = JoinNodeToJoin(table, selectCommandAST.Join),
+                    Columns = SelectColumnsToColumns(table, selectCommandAST.SelectColumns),
+                    Top = selectCommandAST?.Top?.Amount
+                };
+
+                return selectCommand;
+            }
+            else if (astNode is InsertASTNode insertCommandAST)
+            {
+                Table table = _relationManager.GetTable(insertCommandAST.Into.Identifier);
+
+                InsertCommand insertCommand = new InsertCommand
+                {
+                    Table = table,
+                    Values = insertCommandAST.Arguments.Select(x => GetValueFromFactor(x)).ToList()
+                };
+
+                return insertCommand;
             }
 
             return null;

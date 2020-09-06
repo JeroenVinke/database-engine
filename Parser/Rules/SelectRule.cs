@@ -185,7 +185,6 @@ namespace Compiler.Parser.Rules
                     new NonTerminalExpressionDefinition { Identifier = ParserConstants.BooleanExpression },
                     new SemanticActionDefinition((ParsingNode node) =>
                     {
-
                         BooleanExpressionASTNode condition = node.GetAttributeForKey<BooleanExpressionASTNode>(ParserConstants.BooleanExpression, ParserConstants.SyntaxTreeNode);
 
                         node.Attributes.Add(ParserConstants.SyntaxTreeNode, condition);

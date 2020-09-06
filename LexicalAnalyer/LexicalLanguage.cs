@@ -22,7 +22,7 @@ namespace Compiler.LexicalAnalyer
             lexLanguage.Add("(values|VALUES)#", (string value) => { return new WordToken { Type = TokenType.Values }; });
             lexLanguage.Add("(on|ON)#", (string value) => { return new WordToken { Type = TokenType.On }; });
             lexLanguage.Add("(top|TOP)#", (string value) => { return new WordToken { Type = TokenType.Top }; });
-            lexLanguage.Add("(<|>|<=|>=|=|!=)#", (string value) => { return new WordToken { Type = TokenType.RelOp }; });
+            lexLanguage.Add("(<|>|<=|>=|=|!=|IN|in)#", (string value) => { return new WordToken { Type = TokenType.RelOp }; });
             lexLanguage.Add("\\|\\|#", (string value) => { return new WordToken { Type = TokenType.Or }; });
             lexLanguage.Add("&&#", (string value) => { return new WordToken { Type = TokenType.And }; });
             lexLanguage.Add(",#", (string value) => { return new WordToken { Type = TokenType.Comma }; });

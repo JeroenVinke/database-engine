@@ -1,5 +1,6 @@
 ﻿using Compiler.Common;
 using Compiler.Parser.SyntaxTreeNodes;
+using System;
 using System.Collections.Generic;
 
 namespace Compiler.Parser.Rules
@@ -11,10 +12,19 @@ namespace Compiler.Parser.Rules
             grammar.Add(new Production(ParserConstants.Factor,
                 new List<SubProduction>
                 {
+                    ParenthesisRule(),
+                    FactorTermRule()
+                }
+            ));
+
+            grammar.Add(new Production(ParserConstants.FactorTerm,
+                new List<SubProduction>
+                {
                     IdentifierRule(),
                     //BooleanRule(),
                     NumExpressionRule(),
-                    StringRule()
+                    StringRule(),
+                    SubQueryRule()
                 }
             ));
 
@@ -71,6 +81,36 @@ namespace Compiler.Parser.Rules
             ));
         }
 
+        private static SubProduction FactorTermRule()
+        {
+            return new SubProduction
+            (
+                new List<ExpressionDefinition>
+                {
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.FactorTerm },
+                    new SemanticActionDefinition((ParsingNode node) =>
+                    {
+                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.FactorTerm, ParserConstants.SyntaxTreeNode));
+                    })
+                }
+            );
+        }
+
+        private static SubProduction SubQueryRule()
+        {
+            return new SubProduction
+            (
+                new List<ExpressionDefinition>
+                {
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Select },
+                    new SemanticActionDefinition((ParsingNode node) =>
+                    {
+                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Select, ParserConstants.SyntaxTreeNode));
+                    })
+                }
+            );
+        }
+
         private static SubProduction IdentifierRule()
         {
             return new SubProduction
@@ -100,6 +140,22 @@ namespace Compiler.Parser.Rules
         //        }
         //    );
         //}
+
+        private static SubProduction ParenthesisRule()
+        {
+            return new SubProduction
+            (
+                new List<ExpressionDefinition>
+                {
+                    new TerminalExpressionDefinition { TokenType = TokenType.ParenthesisOpen },
+                    new NonTerminalExpressionDefinition { Identifier = ParserConstants.Factor },
+                    new SemanticActionDefinition((ParsingNode node) =>{
+                        node.Attributes.Add(ParserConstants.SyntaxTreeNode, node.GetAttributeForKey<SyntaxTreeNode>(ParserConstants.Factor, ParserConstants.SyntaxTreeNode));
+                    }),
+                    new TerminalExpressionDefinition { TokenType = TokenType.ParenthesisClose }
+                }
+            );
+        }
 
         private static SubProduction StringRule()
         {

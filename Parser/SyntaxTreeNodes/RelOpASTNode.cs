@@ -33,6 +33,10 @@ namespace Compiler.Parser.SyntaxTreeNodes
                 {
                     return "<=";
                 }
+                if (RelationOperator == RelOp.In)
+                {
+                    return "IN";
+                }
                 if (RelationOperator == RelOp.LessThan)
                 {
                     return "<";
@@ -49,6 +53,10 @@ namespace Compiler.Parser.SyntaxTreeNodes
                 if (RelationOperator == RelOp.Equals)
                 {
                     return "!=";
+                }
+                if (RelationOperator == RelOp.In)
+                {
+                    return "NOT IN";
                 }
                 if (RelationOperator == RelOp.NotEquals)
                 {

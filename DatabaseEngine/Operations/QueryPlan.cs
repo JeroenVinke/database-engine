@@ -19,28 +19,30 @@ namespace DatabaseEngine.Operations
 
             if (Command is SelectCommand selectCommand)
             {
-                Operation input = GetFullTableScanOperation(selectCommand.Table);
+                LogicalPlan.Create()
 
-                if (selectCommand.Join != null)
-                {
-                    Table joinTable = selectCommand.Join.RightTable;
-                    input = new NestedLoopJoinOperation(input, GetFullTableScanOperation(joinTable, selectCommand.Join.RightColumn), selectCommand.Join.LeftColumn, selectCommand.Join.RightColumn);
-                }
+                //Operation input = GetFullTableScanOperation(selectCommand.Table);
 
-                if (selectCommand.Condition != null)
-                {
-                    input = new FilterOperation(input, selectCommand.Condition);
-                }
+                //if (selectCommand.Join != null)
+                //{
+                //    Table joinTable = selectCommand.Join.RightTable;
+                //    input = new NestedLoopJoinOperation(input, GetFullTableScanOperation(joinTable, selectCommand.Join.RightColumn), selectCommand.Join.LeftColumn, selectCommand.Join.RightColumn);
+                //}
 
-                if (selectCommand.Columns != null)
-                {
-                    input = new SelectOperation(input, selectCommand.Columns);
-                }
+                //if (selectCommand.Condition != null)
+                //{
+                //    input = new FilterOperation(input, selectCommand.Condition);
+                //}
 
-                if (selectCommand.Top != null)
-                {
-                    input = new TopOperation(input, selectCommand.Top);
-                }
+                //if (selectCommand.Columns != null)
+                //{
+                //    input = new ProjectionOperation(input, selectCommand.Columns);
+                //}
+
+                //if (selectCommand.Top != null)
+                //{
+                //    input = new TopOperation(input, selectCommand.Top);
+                //}
 
                 input.Prepare();
 
