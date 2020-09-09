@@ -2,14 +2,14 @@
 
 namespace DatabaseEngine.Operations
 {
-    public class TopOperation : Operation
+    public class TopOperation : PhysicalOperation
     {
-        private Operation _inputOperation;
+        private PhysicalOperation _inputOperation;
         private int? _amount;
         private int _returned = 0;
 
-        public TopOperation(Operation inputOperation, int? amount)
-            :base (new List<Operation> { inputOperation })
+        public TopOperation(PhysicalOperation inputOperation, int? amount)
+            :base (new List<PhysicalOperation> { inputOperation })
         {
             _inputOperation = inputOperation;
             _amount = amount;

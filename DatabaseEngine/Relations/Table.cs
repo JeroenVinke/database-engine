@@ -64,9 +64,8 @@ namespace DatabaseEngine
             return node;
         }
 
-        public void Insert(object[] entries)
+        public void Insert(CustomTuple tuple)
         {
-            CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
             Block block;
 
             if (TableDefinition.HasClusteredIndex())
@@ -122,6 +121,13 @@ namespace DatabaseEngine
                     indexTree.Value.WriteTree();
                 }
             }
+        }
+
+        public void Insert(object[] entries)
+        {
+            CustomTuple tuple = new CustomTuple(TableDefinition).WithEntries(entries);
+
+            Insert(tuple);
         }
 
         private void AddBulkBlock(Block block)

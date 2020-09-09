@@ -2,7 +2,7 @@
 
 namespace DatabaseEngine.Operations
 {
-    public class IndexSeekOperation : Operation
+    public class IndexSeekOperation : PhysicalOperation
     {
         public Table Table { get; set; }
 
@@ -11,7 +11,7 @@ namespace DatabaseEngine.Operations
         private int _currentIndex = -1;
 
         public IndexSeekOperation(Table table, IBPlusTreeNode index)
-            : base(new List<Operation>())
+            : base(new List<PhysicalOperation>())
         {
             Table = table;
             _index = index;

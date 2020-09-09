@@ -1,4 +1,5 @@
 ﻿using DatabaseEngine.Commands;
+using DatabaseEngine.LogicalPlan;
 using DatabaseEngine.Operations;
 using DatabaseEngine.Relations;
 using DatabaseEngine.Storage;
@@ -14,10 +15,12 @@ namespace DatabaseEngine
         public static RelationManager RelationManager { get; set; }
         public static MemoryManager MemoryManager { get; set; }
         public static bool Debug = true;
+        public static LogicalQueryPlan LogicalQueryPlan { get; set; }
+        public static PhysicalQueryPlan PhysicalQueryPlan { get; set; }
 
         unsafe static void Main(string[] args)
         {
-            //File.Delete(StorageFilePath);
+            File.Delete(StorageFilePath);
             StorageFile storageFile = new StorageFile(StorageFilePath);
 
             MemoryManager = new MemoryManager(storageFile);
@@ -26,14 +29,17 @@ namespace DatabaseEngine
             CreateProductsTableIfNotExists(RelationManager);
             CreateProducersTableIfNotExists(RelationManager);
 
+            //StatisticsManager statisticsManager = new StatisticsManager(RelationManager);
+            //statisticsManager.CalculateStatistics();
+
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
             //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Id FROM producers WHERE Id = 2)";
-            string query = "SELECT TOP 1000 * FROM products WHERE products.Producer";
+            string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\"";
             while (!string.IsNullOrEmpty(query))
             {
                 Console.WriteLine("Executing query...");
 
-                List<CustomTuple> result = ExecuteQuery(query);
+                List<CustomTuple> result = ExecuteQuery(query, true);
 
                 if (result.Count > 0)
                 {
@@ -62,32 +68,58 @@ namespace DatabaseEngine
             }
         }
 
-        public static CommandParser CommandParser { get; set; }
 
-        public static List<CustomTuple> ExecuteQuery(string query)
+        public static List<CustomTuple> ExecuteQuery(string query, bool debug = false)
         {
-            if (CommandParser == null)
+            if (LogicalQueryPlan == null)
             {
-                CommandParser = new CommandParser(RelationManager);
+                LogicalQueryPlan = new LogicalQueryPlan(RelationManager);
+            }
+            if (PhysicalQueryPlan == null)
+            {
+                PhysicalQueryPlan = new PhysicalQueryPlan(RelationManager);
             }
 
             if (Program.Debug)
             {
                 Console.WriteLine("[DEBUG]: Query: " + query);
             }
-            Command command = CommandParser.Parse(query);
+            LogicalElement logicalTree = LogicalQueryPlan.GetTreeForQuery(query);
+            PhysicalOperation physicalTree = PhysicalQueryPlan.GetFromLogicalTree(logicalTree);
 
-            QueryPlan plan = new QueryPlan(command);
-
-            int reads = MemoryBuffer.Reads;
-            int writes = MemoryManager.Writes;
-            List<CustomTuple> result = plan.Execute();
-            if (Program.Debug)
+            if (debug)
             {
-                Console.WriteLine("[DEBUG]: Reads for last query: " + (MemoryBuffer.Reads - reads) + " (total: " + reads + "), writes: " + (MemoryManager.Writes - writes) + " (total: " + writes + ")");
+                //string s = element.ToDot();
+                //;
             }
 
-            return result;
+            physicalTree.Prepare();
+
+            List<CustomTuple> results = new List<CustomTuple>();
+
+            CustomTuple result = null;
+            do
+            {
+                result = physicalTree.GetNext();
+
+                if (result != null)
+                {
+                    results.Add(result);
+                }
+            }
+            while (result != null);
+
+            //QueryPlan plan = new QueryPlan(command);
+
+            //int reads = MemoryBuffer.Reads;
+            //int writes = MemoryManager.Writes;
+            //List<CustomTuple> result = plan.Execute();
+            //if (Program.Debug)
+            //{
+            //    Console.WriteLine("[DEBUG]: Reads for last query: " + (MemoryBuffer.Reads - reads) + " (total: " + reads + "), writes: " + (MemoryManager.Writes - writes) + " (total: " + writes + ")");
+            //}
+
+            return results;
         }
 
         private static void CreateProducersTableIfNotExists(RelationManager relationManager)

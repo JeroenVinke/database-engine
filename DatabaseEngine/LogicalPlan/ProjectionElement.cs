@@ -5,17 +5,17 @@ namespace DatabaseEngine.LogicalPlan
 {
     public class ProjectionElement : LogicalElement
     {
-        private List<AttributeDefinition> _columnsToSelect;
+        public List<ProjectionColumn> Columns { get; set; }
 
-        public ProjectionElement(LogicalElement input, List<AttributeDefinition> columnsToSelect)
+        public ProjectionElement(LogicalElement input, List<ProjectionColumn> columns)
             : base(input)
         {
-            _columnsToSelect = columnsToSelect;
+            Columns = columns;
         }
 
-        public override string ToString()
+        public override string Stringify()
         {
-            return "PROJECT(" + string.Join(", ", _columnsToSelect.Select(x => x.Name)) + ")";
+            return "PROJECT(" + string.Join(", ", Columns.Select(x => x.Relation.Name + "." + x.AttributeDefinition.Name)) + ")";
         }
     }
 }

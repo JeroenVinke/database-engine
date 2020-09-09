@@ -2,17 +2,17 @@
 {
     public class FilterElement : LogicalElement
     {
-        private Condition _condition;
+        public Condition Condition { get; set; }
 
         public FilterElement(LogicalElement input, Condition condition)
             : base(input)
         {
-            _condition = condition;
+            Condition = condition;
         }
 
-        public override string ToString()
+        public override string Stringify()
         {
-            return "FILTER(" + _condition.ToString() + ")";
+            return "FILTER(" + Condition.ToString() + ")";
         }
     }
 }

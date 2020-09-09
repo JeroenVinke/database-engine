@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace DatabaseEngine.Operations
 {
-    public class TableScanOperation : Operation
+    public class TableScanOperation : PhysicalOperation
     {
         public Table Table { get; set; }
         private Block _currentBlock;
@@ -11,7 +11,7 @@ namespace DatabaseEngine.Operations
         private int _recordIndex = -1;
 
         public TableScanOperation(Table table)
-            : base(new List<Operation>())
+            : base(new List<PhysicalOperation>())
         {
             Table = table;
         }

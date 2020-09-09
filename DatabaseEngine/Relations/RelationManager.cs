@@ -85,7 +85,19 @@ namespace DatabaseEngine.Relations
             IndexesTable.Add(new AttributeDefinition() { Name = "Column", Type = ValueType.String });
             IndexesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
             Relations.Add(IndexesTable);
-            
+
+
+            //TableDefinition StatisticsTable = new TableDefinition()
+            //{
+            //    Name = "Indexes",
+            //    Id = 7
+            //};
+            //StatisticsTable.Add(new AttributeDefinition() { Name = "RelationId", Type = ValueType.Integer });
+            //StatisticsTable.Add(new AttributeDefinition() { Name = "TotalSize", Type = ValueType.Integer });
+            //StatisticsTable.Add(new AttributeDefinition() { Name = "Column", Type = ValueType.String });
+            //StatisticsTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
+            //Relations.Add(StatisticsTable);
+
             Table tablesTable = new Table(this, _memoryManager, TablesTable, new Pointer(1, 0));
             Tables.Add(tablesTable);
 
@@ -94,6 +106,9 @@ namespace DatabaseEngine.Relations
 
             Table indexesTable = new Table(this, _memoryManager, IndexesTable, new Pointer(3, 0));
             Tables.Add(indexesTable);
+
+            //Table statisticsTable = new Table(this, _memoryManager, StatisticsTable, new Pointer(4, 0));
+            //Tables.Add(statisticsTable);
         }
 
         public bool TableExists(string v)

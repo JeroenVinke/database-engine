@@ -2,14 +2,14 @@
 
 namespace DatabaseEngine.Operations
 {
-    public class UnionOperator : Operation
+    public class UnionOperator : PhysicalOperation
     {
-        private Operation _left;
-        private Operation _right;
+        private PhysicalOperation _left;
+        private PhysicalOperation _right;
         private bool _leftDone = false;
 
-        public UnionOperator(Operation left, Operation right)
-            : base(new List<Operation>() { left, right })
+        public UnionOperator(PhysicalOperation left, PhysicalOperation right)
+            : base(new List<PhysicalOperation>() { left, right })
         {
             _left = left;
             _right = right;

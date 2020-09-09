@@ -8,7 +8,7 @@ namespace DatabaseEngine
     {
         private StorageFile _storageFile;
 
-        public const int DefaultFirstBlock = 5;
+        public const int DefaultFirstBlock = 10;
         public uint FirstFreeBlock { get; set; } = DefaultFirstBlock;
 
         public FileHeader(StorageFile storageFile)

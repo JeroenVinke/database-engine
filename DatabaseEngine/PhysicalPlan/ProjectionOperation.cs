@@ -3,13 +3,13 @@ using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
-    public class ProjectionOperation : Operation
+    public class ProjectionOperation : PhysicalOperation
     {
-        private Operation _inputOperation;
+        private PhysicalOperation _inputOperation;
         private List<AttributeDefinition> _projectionColumns;
 
-        public ProjectionOperation(Operation inputOperation, List<AttributeDefinition> projectionColumns)
-            :base (new List<Operation> { inputOperation })
+        public ProjectionOperation(PhysicalOperation inputOperation, List<AttributeDefinition> projectionColumns)
+            :base (new List<PhysicalOperation> { inputOperation })
         {
             _inputOperation = inputOperation;
             _projectionColumns = projectionColumns;

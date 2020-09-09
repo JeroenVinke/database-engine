@@ -2,18 +2,18 @@
 
 namespace DatabaseEngine.Operations
 {
-    public abstract class Operation
+    public abstract class PhysicalOperation
     {
-        public Operation(List<Operation> inputOperations)
+        public PhysicalOperation(List<PhysicalOperation> inputOperations)
         {
             InputOperations = inputOperations;
         }
 
-        public virtual List<Operation> InputOperations { get; } = new List<Operation>();
+        public virtual List<PhysicalOperation> InputOperations { get; } = new List<PhysicalOperation>();
 
         public virtual void Prepare()
         {
-            foreach(Operation operation in InputOperations)
+            foreach(PhysicalOperation operation in InputOperations)
             {
                 operation.Prepare();
             }
@@ -26,7 +26,7 @@ namespace DatabaseEngine.Operations
 
         public virtual void Unprepare()
         {
-            foreach (Operation operation in InputOperations)
+            foreach (PhysicalOperation operation in InputOperations)
             {
                 operation.Unprepare();
             }

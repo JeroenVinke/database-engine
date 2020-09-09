@@ -4,8 +4,8 @@ namespace DatabaseEngine
 {
     public class Join
     {
-        public Table LeftTable { get; set; }
-        public Table RightTable { get; set; }
+        public TableDefinition LeftTable { get; set; }
+        public TableDefinition RightTable { get; set; }
         public AttributeDefinition LeftColumn { get; set; }
         public AttributeDefinition RightColumn { get; set; }
     }

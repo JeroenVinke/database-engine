@@ -3,13 +3,13 @@ using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
-    public class FilterOperation : Operation
+    public class FilterOperation : PhysicalOperation
     {
-        private Operation _inputOperation;
+        private PhysicalOperation _inputOperation;
         private Condition _condition;
 
-        public FilterOperation(Operation inputOperation, Condition condition)
-            :base (new List<Operation> { inputOperation })
+        public FilterOperation(PhysicalOperation inputOperation, Condition condition)
+            :base (new List<PhysicalOperation> { inputOperation })
         {
             _inputOperation = inputOperation;
             _condition = condition;

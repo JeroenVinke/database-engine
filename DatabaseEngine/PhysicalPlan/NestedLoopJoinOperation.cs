@@ -3,16 +3,16 @@ using System.Runtime.CompilerServices;
 
 namespace DatabaseEngine.Operations
 {
-    public class NestedLoopJoinOperation : Operation
+    public class NestedLoopJoinOperation : PhysicalOperation
     {
-        private Operation _left;
-        private Operation _right;
+        private PhysicalOperation _left;
+        private PhysicalOperation _right;
         private CustomTuple _leftTuple;
         private AttributeDefinition _leftJoinColumn;
         private AttributeDefinition _rightJoinColumn;
 
-        public NestedLoopJoinOperation(Operation left, Operation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
-            : base(new List<Operation>() { left, right })
+        public NestedLoopJoinOperation(PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
+            : base(new List<PhysicalOperation>() { left, right })
         {
             _left = left;
             _right = right;
