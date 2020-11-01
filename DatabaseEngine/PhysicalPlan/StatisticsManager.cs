@@ -27,6 +27,7 @@ namespace DatabaseEngine
 
             TableStatistics statistics = new TableStatistics() { RelationId = relationId };
             _statisticsPerRelation.Add(relationId, statistics);
+            CalculateStatistic(_relationManager.GetRelation(relationId) as TableDefinition, statistics);
 
             return statistics;
         }
@@ -36,13 +37,27 @@ namespace DatabaseEngine
             foreach (Table table in _relationManager.Tables)
             {
                 TableStatistics statistics = GetStatistics(table.TableDefinition.Id);
-                statistics.TotalSize = GetTotalSizeEstimate(table.TableDefinition);
+                CalculateStatistic(table.TableDefinition, statistics);
+            }
+        }
+
+        public void PrintStatistics()
+        {
+            Console.WriteLine("Statistics:");
+            foreach (TableStatistics statistics in _statisticsPerRelation.Values)
+            {
+                TableDefinition table = _relationManager.GetTable(statistics.RelationId).TableDefinition;
+                Console.WriteLine($"[{table.Name}]: TotalSize: {statistics.Count}");
+                foreach(ColumnStatistics columnStatistic in statistics.ColumnStatistics.Values)
+                {
+                    Console.WriteLine($"[{table.Name}.{columnStatistic.AttributeDefinition.Name}]: DistinctValues: {columnStatistic.DistinctValuesCount}, MaxSize: {columnStatistic.MaxSize}");
+                }
             }
         }
 
         public int GetSizeOfCondition(TableDefinition tableDefinition, Condition condition)
         {
-            int sizeOfRelation = GetTotalSizeEstimate(tableDefinition);
+            int sizeOfRelation = T(tableDefinition);
             if (condition is AndCondition andCondition)
             {
                 return sizeOfRelation * ((GetSizeOfCondition(tableDefinition, andCondition.Left) / sizeOfRelation) * (GetSizeOfCondition(tableDefinition, andCondition.Right) / sizeOfRelation));
@@ -58,7 +73,7 @@ namespace DatabaseEngine
                 switch (leafCondition.Operation)
                 {
                     case Compiler.Common.RelOp.Equals:
-                        return sizeOfRelation * (1 / GetDistinctValuesEstimate(tableDefinition, leafCondition.Column));
+                        return sizeOfRelation * (1 / V(tableDefinition, leafCondition.Column));
                     case Compiler.Common.RelOp.GreaterOrEqualThan:
                     case Compiler.Common.RelOp.GreaterThan:
                     case Compiler.Common.RelOp.LessOrEqualThan:
@@ -71,7 +86,17 @@ namespace DatabaseEngine
             return sizeOfRelation;
         }
 
-        private int GetTotalSizeEstimate(TableDefinition tableDefinition)
+        private int T(TableDefinition tableDefinition)
+        {
+            return GetStatistics(tableDefinition.Id).Count;
+        }
+
+        public int B(TableDefinition tableDefinition)
+        {
+            return GetStatistics(tableDefinition.Id).Count / GetTotalSizeOfTuple(tableDefinition, tableDefinition);
+        }
+
+        private void CalculateStatistic(TableDefinition tableDefinition, TableStatistics statistics)
         {
             PhysicalOperation operation;
 
@@ -85,18 +110,76 @@ namespace DatabaseEngine
                 operation = new TableScanOperation(table);
             }
 
-            int i = 0;
-            while (operation.GetNext() != null)
+            operation.Prepare();
+
+            statistics.ColumnStatistics.Clear();
+
+            foreach (AttributeDefinition attributeDefinition in table.TableDefinition)
             {
-                i++;
+                statistics.ColumnStatistics.Add(attributeDefinition.Name, new ColumnStatistics() { AttributeDefinition = attributeDefinition });
             }
 
-            return i;
+            int i = 0;
+
+            Dictionary<string, HashSet<object>> distinctValuesPerColumn = new Dictionary<string, HashSet<object>>();
+
+            foreach (AttributeDefinition attributeDefinition in table.TableDefinition)
+            {
+                distinctValuesPerColumn.Add(attributeDefinition.Name, new HashSet<object>());
+            }
+
+            Dictionary<string, int> maxSizePerColumn = new Dictionary<string, int>();
+
+            foreach (AttributeDefinition attributeDefinition in table.TableDefinition)
+            {
+                maxSizePerColumn.Add(attributeDefinition.Name, GetDefaultSize(table.TableDefinition, attributeDefinition));
+            }
+
+            CustomTuple tuple;
+            do
+            {
+                tuple = operation.GetNext();
+
+                if (tuple != null)
+                {
+                    i++;
+
+                    foreach (AttributeDefinition attributeDefinition in table.TableDefinition)
+                    {
+                        object value = tuple.GetValueFor<object>(attributeDefinition.Name);
+                        
+                        if (!distinctValuesPerColumn[attributeDefinition.Name].Contains(value))
+                        {
+                            distinctValuesPerColumn[attributeDefinition.Name].Add(value);
+                        }
+
+                        if (attributeDefinition.Type == ValueType.String
+                            && value is string s
+                            && s.Length > maxSizePerColumn[attributeDefinition.Name])
+                        {
+                            maxSizePerColumn[attributeDefinition.Name] = s.Length;
+                        }
+                    }
+                }
+            }
+            while (tuple != null);
+
+            foreach (KeyValuePair<string, HashSet<object>> distinctValue in distinctValuesPerColumn)
+            {
+                statistics.ColumnStatistics[distinctValue.Key].DistinctValuesCount = distinctValue.Value.Count;
+            }
+
+            foreach (KeyValuePair<string, int> maxSize in maxSizePerColumn)
+            {
+                statistics.ColumnStatistics[maxSize.Key].MaxSize = maxSize.Value;
+            }
+
+            statistics.Count = i;
         }
 
-        private int GetDistinctValuesEstimate(TableDefinition tableDefinition, AttributeDefinition column)
+        public int V(TableDefinition tableDefinition, AttributeDefinition column)
         {
-            throw new NotImplementedException();
+            return _statisticsPerRelation[tableDefinition.Id].ColumnStatistics[column.Name].DistinctValuesCount;
         }
 
         public double GetSizeOfProjection(ProjectionElement projection)
@@ -121,13 +204,13 @@ namespace DatabaseEngine
 
             foreach (AttributeDefinition definition in attributeDefinitions)
             {
-                result += GetSizeOfAttributeDefinition(relation, definition);
+                result += GetMaxSize(relation, definition);
             }
 
             return result;
         }
 
-        private int GetSizeOfAttributeDefinition(Relation relation, AttributeDefinition definition)
+        private int GetDefaultSize(Relation relation, AttributeDefinition definition)
         {
             switch (definition.Type)
             {
@@ -142,6 +225,11 @@ namespace DatabaseEngine
             }
 
             return 0;
+        }
+
+        private int GetMaxSize(Relation relation, AttributeDefinition definition)
+        {
+            return _statisticsPerRelation[relation.Id].ColumnStatistics[definition.Name].MaxSize;
         }
     }
 }

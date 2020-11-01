@@ -52,6 +52,8 @@ namespace DatabaseEngine.Operations
                         return value.IsEqualTo(leafCondition.Value);
                     case Compiler.Common.RelOp.GreaterThan:
                         return value.IsGreaterThan(leafCondition.Value);
+                    //case Compiler.Common.RelOp.In:
+                    //    return value.IsGreate56456rThan(leafCondition.Value);
                 }
             }
 

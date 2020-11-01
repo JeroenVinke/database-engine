@@ -49,61 +49,71 @@ namespace DatabaseEngine.Storage
 
         public Block Read(Relation relation, Pointer page)
         {
-            if (_cachedBlocks.Contains(page.PageNumber))
+            lock (_buffers)
             {
-                // cache hit
-                return _buffers.First(x => x.Page == page.PageNumber).GetBlock();
+                if (_cachedBlocks.Contains(page.PageNumber))
+                {
+                    // cache hit
+                    return _buffers.First(x => x.Page == page.PageNumber).GetBlock();
+                }
+
+                MemoryBuffer freeBuffer = _buffers.FirstOrDefault(x => !x.Filled);
+
+                if (freeBuffer != null)
+                {
+                    _cachedBlocks.Add(page.PageNumber);
+                    // cache miss, load in cache
+                    return freeBuffer.Read(relation, page);
+                }
+
+                // cache miss, no free cache 
+                return _storageFile.ReadBlock(this, relation, page);
             }
-
-            MemoryBuffer freeBuffer = _buffers.FirstOrDefault(x => !x.Filled);
-
-            if (freeBuffer != null)
-            {
-                _cachedBlocks.Add(page.PageNumber);
-                // cache miss, load in cache
-                return freeBuffer.Read(relation, page);
-            }
-
-            // cache miss, no free cache 
-            return _storageFile.ReadBlock(this, relation, page);
         }
 
         public void Persist(Block block)
         {
-            Writes++;
-
-            _storageFile.WriteBlock(block);
-
-            Pointer page = block.Page;
-            if (_cachedBlocks.Contains(page.PageNumber))
+            lock (_buffers)
             {
-                // cache hit
-                _buffers.First(x => x.Page == page.PageNumber).Update(block);
+                Writes++;
+
+                _storageFile.WriteBlock(block);
+
+                Pointer page = block.Page;
+                if (_cachedBlocks.Contains(page.PageNumber))
+                {
+                    // cache hit
+                    _buffers.First(x => x.Page == page.PageNumber).Update(block);
+                }
             }
         }
 
         public void Cleanup()
         {
-            int cleaned = 0;
-            int kept = 0;
-            foreach(MemoryBuffer buffer in _buffers)
+            lock(_buffers)
             {
-                if (buffer.Filled && (DateTime.Now - buffer.LastAccession).TotalMinutes >= MaximumCacheDuration)
+                int cleaned = 0;
+                int kept = 0;
+
+                foreach (MemoryBuffer buffer in _buffers)
                 {
-                    _cachedBlocks.Remove((uint)buffer.Page);
-                    buffer.Dispose();
-                    cleaned++;
-                }
-                else if (buffer.Filled)
-                {
-                    kept++;
+                    if (buffer.Filled && (DateTime.Now - buffer.LastAccession).TotalMinutes >= MaximumCacheDuration)
+                    {
+                        _cachedBlocks.Remove((uint)buffer.Page);
+                        buffer.Dispose();
+                        cleaned++;
+                    }
+                    else if (buffer.Filled)
+                    {
+                        kept++;
+                    }
                 }
             }
 
-            if (Program.Debug)
-            {
-                Console.WriteLine("[DEBUG]: Cleanup (cleaned: " + cleaned + ", kept: " + kept + ", total free: " + (_buffers.Count - kept));
-            }
+            //if (Program.Debug)
+            //{
+            //    Console.WriteLine("[DEBUG]: Cleanup (cleaned: " + cleaned + ", kept: " + kept + ", total free: " + (_buffers.Count - kept));
+            //}
         }
     }
 }

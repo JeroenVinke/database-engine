@@ -1,8 +1,10 @@
 ﻿using DatabaseEngine.Models;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace DatabaseEngine
 {
+    [DebuggerDisplay("Id: {Id}, Name: {Name}")]
     public class Relation : List<AttributeDefinition>
     {
         [FromColumn("Id")]

@@ -55,19 +55,5 @@
 
             return dot;
         }
-
-        //public override string ToString()
-        //{
-        //    //return dot;
-        //    //if (LeftChild != null && RightChild != null)
-        //    //{
-        //    //    return Stringify() + System.Environment.NewLine + "| " + LeftChild.ToString() + " / " + RightChild.ToString();
-        //    //}
-        //    //if (LeftChild != null)
-        //    //{
-        //    //    return Stringify() + System.Environment.NewLine + "| " + LeftChild.ToString();
-        //    //}
-        //    //return Stringify();
-        //}
     }
 }

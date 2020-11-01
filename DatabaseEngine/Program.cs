@@ -29,12 +29,14 @@ namespace DatabaseEngine
             CreateProductsTableIfNotExists(RelationManager);
             CreateProducersTableIfNotExists(RelationManager);
 
-            //StatisticsManager statisticsManager = new StatisticsManager(RelationManager);
-            //statisticsManager.CalculateStatistics();
+            StatisticsManager statisticsManager = new StatisticsManager(RelationManager);
+            statisticsManager.CalculateStatistics();
+            statisticsManager.PrintStatistics();
 
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
-            //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Id FROM producers WHERE Id = 2)";
-            string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\"";
+            //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Name FROM producers WHERE Id = 2)";
+            string query = "SELECT * FROM products WHERE products.BuildYear = 2000";
+            //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\"";
             while (!string.IsNullOrEmpty(query))
             {
                 Console.WriteLine("Executing query...");

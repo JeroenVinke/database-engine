@@ -139,6 +139,7 @@ namespace DatabaseEngine.Relations
             }
 
             Tables.Add(new Table(this, _memoryManager, table, new Pointer(rootBlock)));
+            Relations.Add(table);
 
             return Tables.Last();
         }

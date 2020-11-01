@@ -48,9 +48,17 @@ namespace DatabaseEngine.LogicalPlan
 
                 if (selectASTNode.Condition != null)
                 {
-                    Condition condition = BooleanExpressionToCondition(table.TableDefinition, selectASTNode.Condition);
+                    // todo: IN (1,2,3)
+                    if (TryOptimizeIN(selectASTNode, result, table.TableDefinition, out CartesianProductElement productElement))
+                    {
+                        result = productElement;
+                    }
+                    else
+                    {
+                        Condition condition = BooleanExpressionToCondition(table.TableDefinition, selectASTNode.Condition);
 
-                    result = new FilterElement(result, condition);
+                        result = new FilterElement(result, condition);
+                    }
                 }
 
                 result = new ProjectionElement(result, SelectColumnsToColumns(table, selectASTNode.SelectColumns));
@@ -67,6 +75,46 @@ namespace DatabaseEngine.LogicalPlan
             }
 
             return null;
+        }
+
+        private bool TryOptimizeIN(SelectASTNode selectASTNode, LogicalElement input, TableDefinition tableDefinition, out CartesianProductElement result)
+        {
+            if(selectASTNode.Condition is RelOpASTNode relOpASTNode
+                && relOpASTNode.RelationOperator == Compiler.Common.RelOp.In)
+            {
+                SelectASTNode innerSelectASTNode = null;
+                IdentifierASTNode outerIdentifierASTNode = null;
+
+                if (relOpASTNode.Right is SelectASTNode)
+                {
+                    innerSelectASTNode = (SelectASTNode)relOpASTNode.Right;
+
+                    if (relOpASTNode.Left is IdentifierASTNode)
+                    {
+                        outerIdentifierASTNode = (IdentifierASTNode)relOpASTNode.Left;
+                    }
+                }
+
+                if (relOpASTNode.Right is IdentifierASTNode)
+                {
+                    outerIdentifierASTNode = (IdentifierASTNode)relOpASTNode.Right;
+
+                    if (relOpASTNode.Left is SelectASTNode)
+                    {
+                        innerSelectASTNode = (SelectASTNode)relOpASTNode.Left;
+                    }
+                }
+
+                if (innerSelectASTNode != null
+                    && outerIdentifierASTNode != null)
+                {
+                    result = new CartesianProductElement(input, GetElementForTreeNode(innerSelectASTNode), GetColumnFromIdentifierNode(tableDefinition, outerIdentifierASTNode), SelectColumnsToColumns(_relationManager.GetTable(innerSelectASTNode.From.Identifier.Identifier), innerSelectASTNode.SelectColumns).First().AttributeDefinition);
+                    return true;
+                }
+            }
+
+            result = null;
+            return false;
         }
 
         private List<ProjectionColumn> SelectColumnsToColumns(Table table, List<FactorASTNode> selectColumns)
@@ -174,28 +222,35 @@ namespace DatabaseEngine.LogicalPlan
             }
             else if (expr is RelOpASTNode relopNode)
             {
-                string column = "";
+                AttributeDefinition attributeDefinition = null;
 
                 if (relopNode.Left is IdentifierASTNode)
                 {
-                    column = ((IdentifierASTNode)relopNode.Left).Identifier;
+                    attributeDefinition = GetColumnFromIdentifierNode(tableDefinition, (IdentifierASTNode)relopNode.Left);
                 }
                 else if (relopNode.Right is IdentifierASTNode)
                 {
-                    column = ((IdentifierASTNode)relopNode.Right).Identifier;
+                    attributeDefinition = GetColumnFromIdentifierNode(tableDefinition, (IdentifierASTNode)relopNode.Right);
                 }
 
                 object value = GetValueFromConditionASTNode(relopNode.Right) ?? GetValueFromConditionASTNode(relopNode.Left);
 
                 return new LeafCondition
                 {
-                    Column = GetColumnFromJoinString(column.Contains(".") ? GetTableDefinitionFromJoinString(column) : _relationManager.GetTable(tableDefinition.Name).TableDefinition, column),
+                    Column = attributeDefinition,
                     Operation = relopNode.RelationOperator,
                     Value = value
                 };
             }
 
             return null;
+        }
+
+        private AttributeDefinition GetColumnFromIdentifierNode(TableDefinition tableDefinition, IdentifierASTNode relopNode)
+        {
+            string column = relopNode.Identifier;
+
+            return GetColumnFromJoinString(column.Contains(".") ? GetTableDefinitionFromJoinString(column) : _relationManager.GetTable(tableDefinition.Name).TableDefinition, column);
         }
 
         private object GetValueFromConditionASTNode(FactorASTNode node)
