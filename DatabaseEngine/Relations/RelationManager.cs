@@ -41,6 +41,8 @@ namespace DatabaseEngine.Relations
                     tableDefinition.AddIndex(index);
                 }
 
+                tableDefinition.SyncRelation();
+
                 Relations.Add(tableDefinition);
                 Tables.Add(new Table(this, _memoryManager, tableDefinition, new Pointer(tableDefinition.RootBlockId)));
             }
@@ -61,6 +63,7 @@ namespace DatabaseEngine.Relations
             TablesTable.Add(new AttributeDefinition() { Name = "Id", Type = ValueType.Integer });
             TablesTable.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
             TablesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
+            TablesTable.SyncRelation();
             Relations.Add(TablesTable);
 
 
@@ -72,6 +75,7 @@ namespace DatabaseEngine.Relations
             ColumnsTable.Add(new AttributeDefinition() { Name = "RelationId", Type = ValueType.Integer });
             ColumnsTable.Add(new AttributeDefinition() { Name = "Type", Type = ValueType.Integer });
             ColumnsTable.Add(new AttributeDefinition() { Name = "Name", Type = ValueType.String });
+            ColumnsTable.SyncRelation();
             Relations.Add(ColumnsTable);
 
 
@@ -84,6 +88,7 @@ namespace DatabaseEngine.Relations
             IndexesTable.Add(new AttributeDefinition() { Name = "IsClustered", Type = ValueType.Boolean });
             IndexesTable.Add(new AttributeDefinition() { Name = "Column", Type = ValueType.String });
             IndexesTable.Add(new AttributeDefinition() { Name = "RootBlockId", Type = ValueType.UnsignedInteger });
+            IndexesTable.SyncRelation();
             Relations.Add(IndexesTable);
 
 
@@ -139,6 +144,7 @@ namespace DatabaseEngine.Relations
             }
 
             Tables.Add(new Table(this, _memoryManager, table, new Pointer(rootBlock)));
+            table.SyncRelation();
             Relations.Add(table);
 
             return Tables.Last();
@@ -168,6 +174,7 @@ namespace DatabaseEngine.Relations
                 indexRelation.Add(new AttributeDefinition() { Name = "LeftPointer", Type = ValueType.UnsignedInteger });
                 indexRelation.Add(new AttributeDefinition() { Name = "ValuePointer", Type = ValueType.UnsignedInteger });
                 indexRelation.Add(new AttributeDefinition() { Name = "RightPointer", Type = ValueType.UnsignedInteger });
+                indexRelation.SyncRelation();
                 Relations.Add(indexRelation);
             }
         }

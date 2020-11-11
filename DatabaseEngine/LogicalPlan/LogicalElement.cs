@@ -1,4 +1,6 @@
-﻿namespace DatabaseEngine.LogicalPlan
+﻿using System;
+
+namespace DatabaseEngine.LogicalPlan
 {
     public abstract class LogicalElement
     {

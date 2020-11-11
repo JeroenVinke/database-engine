@@ -13,6 +13,7 @@ namespace DatabaseEngine
     {
         public static string StorageFilePath = $"{Directory.GetCurrentDirectory()}\\data.storage";
         public static RelationManager RelationManager { get; set; }
+        public static StatisticsManager StatisticsManager { get; set; }
         public static MemoryManager MemoryManager { get; set; }
         public static bool Debug = true;
         public static LogicalQueryPlan LogicalQueryPlan { get; set; }
@@ -24,18 +25,20 @@ namespace DatabaseEngine
             StorageFile storageFile = new StorageFile(StorageFilePath);
 
             MemoryManager = new MemoryManager(storageFile);
+
             RelationManager = new RelationManager(MemoryManager);
+            StatisticsManager = new StatisticsManager(RelationManager);
+
             RelationManager.Initialize();
             CreateProductsTableIfNotExists(RelationManager);
             CreateProducersTableIfNotExists(RelationManager);
 
-            StatisticsManager statisticsManager = new StatisticsManager(RelationManager);
-            statisticsManager.CalculateStatistics();
-            statisticsManager.PrintStatistics();
+            StatisticsManager.CalculateStatistics();
+            StatisticsManager.PrintStatistics();
 
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
             //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Name FROM producers WHERE Id = 2)";
-            string query = "SELECT * FROM products WHERE products.BuildYear = 2000";
+            string query = "SELECT * FROM products JOIN producers on products.producer = producers.name WHERE producers.name = \"AMD\"";
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\"";
             while (!string.IsNullOrEmpty(query))
             {
@@ -79,7 +82,7 @@ namespace DatabaseEngine
             }
             if (PhysicalQueryPlan == null)
             {
-                PhysicalQueryPlan = new PhysicalQueryPlan(RelationManager);
+                PhysicalQueryPlan = new PhysicalQueryPlan(RelationManager, StatisticsManager);
             }
 
             if (Program.Debug)

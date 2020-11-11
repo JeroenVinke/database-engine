@@ -73,7 +73,7 @@ namespace DatabaseEngine
                 switch (leafCondition.Operation)
                 {
                     case Compiler.Common.RelOp.Equals:
-                        return sizeOfRelation * (1 / V(tableDefinition, leafCondition.Column));
+                        return (int)Math.Round(sizeOfRelation * ((double)1 / (double)V(tableDefinition, leafCondition.Column)));
                     case Compiler.Common.RelOp.GreaterOrEqualThan:
                     case Compiler.Common.RelOp.GreaterThan:
                     case Compiler.Common.RelOp.LessOrEqualThan:

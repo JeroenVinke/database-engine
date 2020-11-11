@@ -31,5 +31,8 @@ namespace DatabaseEngine.Operations
                 operation.Unprepare();
             }
         }
+
+        //public abstract int EstimateNumberOfRows();
+        public virtual int EstimateNumberOfRows() { return 0; }
     }
 }

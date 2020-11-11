@@ -8,5 +8,6 @@ namespace DatabaseEngine
         public string Name { get; set; }
         [FromColumn("Type")]
         public ValueType Type { get; set; }
+        public Relation Relation { get; set; }
     }
 }

@@ -11,5 +11,13 @@ namespace DatabaseEngine
         public int Id { get; internal set; }
         [FromColumn("Name")]
         public string Name { get; set; }
+
+        public void SyncRelation()
+        {
+            foreach(AttributeDefinition attributeDefinition in this)
+            {
+                attributeDefinition.Relation = this;
+            }
+        }
     }
 }

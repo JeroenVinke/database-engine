@@ -36,31 +36,60 @@ namespace DatabaseEngine.LogicalPlan
                 Table table = _relationManager.GetTable(selectASTNode.From.Identifier.Identifier);
 
                 LogicalElement result = new RelationElement(table.TableDefinition);
+                Relation r;
+
+                Condition condition = null;
+
+                if (selectASTNode.Condition != null)
+                {
+                    condition = BooleanExpressionToCondition(table.TableDefinition, selectASTNode.Condition);
+                    //// todo: IN (1,2,3)
+                    //// todo: IN (select id from products) AND x = 1
+                    //if (TryOptimizeIN(selectASTNode, result, table.TableDefinition, out CartesianProductElement productElement))
+                    //{
+                    //    result = productElement;
+                    //}
+                    //else
+                    //{
+                    //}
+                }
 
                 if (selectASTNode.Join != null)
                 {
                     Join join = JoinNodeToJoin(table.TableDefinition, selectASTNode.Join);
 
-                    RelationElement joinRelation = new RelationElement(join.RightTable);
+                    LogicalElement joinRelation = new RelationElement(join.RightTable);
+
+                    r = new Relation();
+                    r.AddRange(table.TableDefinition);
+                    r.AddRange(join.RightTable);
+
+                    (Condition leftPushedDownCondition, Condition leftover1) = TryPushdown((RelationElement)result, condition);
+                    (Condition rightPushedDownCondition, Condition leftover2) = TryPushdown((RelationElement)joinRelation, leftover1);
+                    leftPushedDownCondition = leftPushedDownCondition.Simplify();
+                    rightPushedDownCondition = rightPushedDownCondition.Simplify();
+                    condition = leftover2?.Simplify();
+
+                    if (leftPushedDownCondition != null)
+                    {
+                        result = new SelectionElement(result, leftPushedDownCondition, table.TableDefinition);
+                    }
+                    if (rightPushedDownCondition != null)
+                    {
+                        joinRelation = new SelectionElement(joinRelation, rightPushedDownCondition, join.RightTable);
+                    }
 
                     result = new CartesianProductElement(result, joinRelation, join.LeftColumn, join.RightColumn);
                 }
-
-                if (selectASTNode.Condition != null)
+                else
                 {
-                    // todo: IN (1,2,3)
-                    if (TryOptimizeIN(selectASTNode, result, table.TableDefinition, out CartesianProductElement productElement))
-                    {
-                        result = productElement;
-                    }
-                    else
-                    {
-                        Condition condition = BooleanExpressionToCondition(table.TableDefinition, selectASTNode.Condition);
+                    r = table.TableDefinition;
 
-                        result = new FilterElement(result, condition);
-                    }
+                    result = new RelationElement(r);
                 }
 
+
+                result = new SelectionElement(result, condition, r);
                 result = new ProjectionElement(result, SelectColumnsToColumns(table, selectASTNode.SelectColumns));
 
                 return result;
@@ -75,6 +104,73 @@ namespace DatabaseEngine.LogicalPlan
             }
 
             return null;
+        }
+
+        private (Condition, Condition) TryPushdown(RelationElement input, Condition condition, Condition pushedDownCondition = null)
+        {
+            if (condition == null)
+            {
+                return (pushedDownCondition, condition);
+            }
+
+            if (pushedDownCondition == null)
+            {
+                pushedDownCondition = new AndCondition();
+            }
+
+            if (condition is AndCondition and)
+            {
+                if (and.Left is LeafCondition leftLeaf)
+                {
+                    if (leftLeaf.Column.Relation.Id == input.Relation.Id)
+                    {
+                        pushedDownCondition = new AndCondition()
+                        {
+                            Left = pushedDownCondition,
+                            Right = leftLeaf
+                        };
+
+                        and.Left = null;
+                    }
+                }
+                else
+                {
+                    return TryPushdown(input, and.Left, pushedDownCondition);
+                }
+
+                if (and.Right is LeafCondition rightLeaf)
+                {
+                    if (rightLeaf.Column.Relation.Id == input.Relation.Id)
+                    {
+                        pushedDownCondition = new AndCondition()
+                        {
+                            Left = pushedDownCondition,
+                            Right = rightLeaf
+                        };
+
+                        and.Right = null;
+                    }
+                }
+                else
+                {
+                    return TryPushdown(input, and.Right, pushedDownCondition);
+                }
+            }
+            else if (condition is LeafCondition leaf)
+            {
+                if (leaf.Column.Relation.Id == input.Relation.Id)
+                {
+                    pushedDownCondition = new AndCondition()
+                    {
+                        Left = pushedDownCondition,
+                        Right = leaf
+                    };
+
+                    condition = null;
+                }
+            }
+
+            return (pushedDownCondition, condition);
         }
 
         private bool TryOptimizeIN(SelectASTNode selectASTNode, LogicalElement input, TableDefinition tableDefinition, out CartesianProductElement result)
@@ -198,14 +294,14 @@ namespace DatabaseEngine.LogicalPlan
             return null;
         }
 
-        private Condition BooleanExpressionToCondition(TableDefinition tableDefinition, BooleanExpressionASTNode expr)
+        private Condition BooleanExpressionToCondition(TableDefinition mainTable, BooleanExpressionASTNode expr)
         {
             if (expr is AndASTNode andNode)
             {
                 Condition c = new AndCondition()
                 {
-                    Left = BooleanExpressionToCondition(tableDefinition, andNode.Left),
-                    Right = BooleanExpressionToCondition(tableDefinition, andNode.Right),
+                    Left = BooleanExpressionToCondition(mainTable, andNode.Left),
+                    Right = BooleanExpressionToCondition(mainTable, andNode.Right),
                 };
 
                 return c;
@@ -214,8 +310,8 @@ namespace DatabaseEngine.LogicalPlan
             {
                 Condition c = new OrCondition()
                 {
-                    Left = BooleanExpressionToCondition(tableDefinition, orNode.Left),
-                    Right = BooleanExpressionToCondition(tableDefinition, orNode.Right),
+                    Left = BooleanExpressionToCondition(mainTable, orNode.Left),
+                    Right = BooleanExpressionToCondition(mainTable, orNode.Right),
                 };
 
                 return c;
@@ -226,11 +322,11 @@ namespace DatabaseEngine.LogicalPlan
 
                 if (relopNode.Left is IdentifierASTNode)
                 {
-                    attributeDefinition = GetColumnFromIdentifierNode(tableDefinition, (IdentifierASTNode)relopNode.Left);
+                    attributeDefinition = GetColumnFromIdentifierNode(mainTable, (IdentifierASTNode)relopNode.Left);
                 }
                 else if (relopNode.Right is IdentifierASTNode)
                 {
-                    attributeDefinition = GetColumnFromIdentifierNode(tableDefinition, (IdentifierASTNode)relopNode.Right);
+                    attributeDefinition = GetColumnFromIdentifierNode(mainTable, (IdentifierASTNode)relopNode.Right);
                 }
 
                 object value = GetValueFromConditionASTNode(relopNode.Right) ?? GetValueFromConditionASTNode(relopNode.Left);

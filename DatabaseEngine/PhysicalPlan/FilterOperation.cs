@@ -6,13 +6,13 @@ namespace DatabaseEngine.Operations
     public class FilterOperation : PhysicalOperation
     {
         private PhysicalOperation _inputOperation;
-        private Condition _condition;
+        public Condition Condition { get; set; }
 
         public FilterOperation(PhysicalOperation inputOperation, Condition condition)
             :base (new List<PhysicalOperation> { inputOperation })
         {
             _inputOperation = inputOperation;
-            _condition = condition;
+            Condition = condition;
         }
 
         public override CustomTuple GetNext()
@@ -21,7 +21,7 @@ namespace DatabaseEngine.Operations
 
             if (tuple != null)
             {
-                if (SatisfiesCondition(tuple, _condition))
+                if (SatisfiesCondition(tuple, Condition))
                 {
                     return tuple;
                 }
@@ -32,8 +32,18 @@ namespace DatabaseEngine.Operations
             return null;
         }
 
+        public override int EstimateNumberOfRows()
+        {
+            return base.EstimateNumberOfRows();
+        }
+
         private bool SatisfiesCondition(CustomTuple tuple, Condition condition)
         {
+            if (condition == null)
+            {
+                return true;
+            }
+
             if (condition is AndCondition andCondition)
             {
                 return SatisfiesCondition(tuple, andCondition.Left) && SatisfiesCondition(tuple, andCondition.Right);
@@ -52,8 +62,6 @@ namespace DatabaseEngine.Operations
                         return value.IsEqualTo(leafCondition.Value);
                     case Compiler.Common.RelOp.GreaterThan:
                         return value.IsGreaterThan(leafCondition.Value);
-                    //case Compiler.Common.RelOp.In:
-                    //    return value.IsGreate56456rThan(leafCondition.Value);
                 }
             }
 
