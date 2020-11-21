@@ -38,7 +38,8 @@ namespace DatabaseEngine
 
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\" ";
             //string query = "SELECT TOP 1000 * FROM products WHERE products.Producer IN (SELECT Name FROM producers WHERE Id = 2)";
-            string query = "SELECT * FROM products JOIN producers on products.producer = producers.name WHERE producers.name = \"AMD\"";
+            //string query = "SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = \"AMD\" && products.BuildYear = 2010)";
+            string query = "SELECT * FROM products WHERE Id >= 17";
             //string query = "SELECT products.BuildYear, * FROM products JOIN producers on products.producer = producers.name WHERE producers.Name = \"AMD\"";
             while (!string.IsNullOrEmpty(query))
             {
@@ -90,6 +91,15 @@ namespace DatabaseEngine
                 Console.WriteLine("[DEBUG]: Query: " + query);
             }
             LogicalElement logicalTree = LogicalQueryPlan.GetTreeForQuery(query);
+
+            if (logicalTree is ReadLogicalElement readLogicalElement)
+            {
+                if (query.Contains("&&"))
+                {
+                    ;
+                }
+                int t = readLogicalElement.T();
+            }
             PhysicalOperation physicalTree = PhysicalQueryPlan.GetFromLogicalTree(logicalTree);
 
             if (debug)
@@ -102,7 +112,7 @@ namespace DatabaseEngine
 
             List<CustomTuple> results = new List<CustomTuple>();
 
-            CustomTuple result = null;
+            CustomTuple result;
             do
             {
                 result = physicalTree.GetNext();
@@ -159,7 +169,7 @@ namespace DatabaseEngine
                 table.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "Producer", Type = ValueType.String });
                 table.AddIndex(new Index { IsClustered = true, Column = "Id" });
-                table.AddIndex(new Index { IsClustered = false, Column = "Producer" });
+                //table.AddIndex(new Index { IsClustered = false, Column = "Producer" });
 
                 relationManager.CreateTable(table);
                 WriteProducts();
@@ -168,16 +178,33 @@ namespace DatabaseEngine
 
         private static void WriteProducers()
         {
-            ExecuteQuery("INSERT INTO producers VALUES (1, \"Intel\")");
-            ExecuteQuery("INSERT INTO producers VALUES (2, \"AMD\")");
+            //ExecuteQuery("INSERT INTO producers VALUES (1, \"Intel\")");
+            //ExecuteQuery("INSERT INTO producers VALUES (2, \"AMD\")");
+
+            Table table = RelationManager.GetTable("producers");
+            table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 1).AddValueFor("Name", "Intel"));
+            table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 2).AddValueFor("Name", "AMD"));
         }
 
         private static void WriteProducts()
         {
-            ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
-            ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
-            ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
-            ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
+            //ExecuteQuery("INSERT INTO products VALUES (1, 1994, \"Intel\")");
+            //ExecuteQuery("INSERT INTO products VALUES (2, 2010, \"AMD\")");
+            //ExecuteQuery("INSERT INTO products VALUES (4, 2020, \"AMD\")");
+            //ExecuteQuery("INSERT INTO products VALUES (3, 2015, \"Intel\")");
+
+            Table table = RelationManager.GetTable("products");
+            //table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 1).AddValueFor("BuildYear", 1994).AddValueFor("Producer", "Intel"));
+            //table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 2).AddValueFor("BuildYear", 2010).AddValueFor("Producer", "AMD"));
+            //table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 3).AddValueFor("BuildYear", 2020).AddValueFor("Producer", "AMD"));
+            //table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", 4).AddValueFor("BuildYear", 2015).AddValueFor("Producer", "Intel"));
+
+            table.StartBulkMode();
+            for(int i = 0; i < 10; i++)
+            {
+                table.Insert(new CustomTuple(table.TableDefinition).AddValueFor<int>("Id", i).AddValueFor("BuildYear", 1900 + i/5).AddValueFor("Producer", i % 2 == 0 ? "Intel" : "AMD"));
+            }
+            table.EndBulkMode();
 
             //RelationManager.GetTable("products").StartBulkMode();
             //for(int i = 0; i < 1000; i++)

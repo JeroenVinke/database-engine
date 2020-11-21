@@ -23,7 +23,7 @@ namespace DatabaseEngine.Operations
             {
                 return new InsertOperation(_relationManager.GetTable(insertElement.TableDefinition.Id), GetDefaultPhysicalOperation(insertElement.LeftChild));
             }
-            return GetDefaultPhysicalOperation(logicalTree);
+            return GetDefaultPhysicalOperation(logicalTree as ReadLogicalElement);
         }
 
         private PhysicalOperation GetDefaultPhysicalOperation(LogicalElement element)
@@ -54,7 +54,7 @@ namespace DatabaseEngine.Operations
 
                 if (table.TableDefinition.HasClusteredIndex())
                 {
-                    return new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
+                    return new IndexScanOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
                 }
                 return new TableScanOperation(table);
             }
@@ -74,6 +74,12 @@ namespace DatabaseEngine.Operations
 
                 PhysicalOperation input = GetDefaultPhysicalOperation(selectionElement.LeftChild);
 
+                // has index
+                if (selectionElement.LeftChild is RelationElement relElement && relElement.Relation.Name.ToLower() == "products")
+                {
+                    return new IndexSeekOperation(Program.RelationManager.GetTable(relElement.Relation.Id), Program.RelationManager.GetTable(relElement.Relation.Id).GetIndex((relElement.Relation as TableDefinition).GetClusteredIndex().Column), selectionElement.Condition);
+                }
+
                 return new FilterOperation(input, selectionElement.Condition);
             }
             else if (element is CartesianProductElement cartesianProductElement)
@@ -81,10 +87,10 @@ namespace DatabaseEngine.Operations
                 PhysicalOperation left = GetDefaultPhysicalOperation(element.LeftChild);
                 PhysicalOperation right = GetDefaultPhysicalOperation(element.RightChild);
 
-                int leftSize = left.EstimateNumberOfRows();
-                int rightSize = right.EstimateNumberOfRows();
+                //int leftSize = left.EstimateNumberOfRows();
+                //int rightSize = right.EstimateNumberOfRows();
 
-                int x = _statisticsManager.GetSizeOfCondition((right.InputOperations.First() as TableScanOperation).Table.TableDefinition, (right as FilterOperation).Condition);
+                //int x = _statisticsManager.GetSizeOfCondition((right.InputOperations.First() as TableScanOperation).Table.TableDefinition, (right as FilterOperation).Condition);
 
                 return new NestedLoopJoinOperation(left, right, cartesianProductElement.LeftJoinColumn, cartesianProductElement.RightJoinColumn);
             }
@@ -156,7 +162,7 @@ namespace DatabaseEngine.Operations
 
                 if (table.TableDefinition.HasClusteredIndex())
                 {
-                    return new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
+                    return new IndexScanOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
                 }
                 return new TableScanOperation(table);
             }

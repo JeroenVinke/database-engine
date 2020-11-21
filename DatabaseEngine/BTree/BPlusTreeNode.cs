@@ -252,6 +252,47 @@ namespace DatabaseEngine
             }
         }
 
+        // todo: support AndCondition, OrCondition with 1 column (index column)
+        public IBPlusTreeNode FindFirstNodeForCondition(LeafCondition condition)
+        {
+            if (IsLeaf)
+            {
+                CustomValueComparer comparer = Comparers.GetComparer(condition.Column.Type);
+
+                for (int i = Values.Count - 1; i >= 0; i--)
+                {
+                    if (SatisfiesCondition(comparer, Values[i].Value, condition))
+                    {
+                        return this;
+                    }
+                }
+
+                return null;
+            }
+            else
+            {
+                // todo: if GreaterThan, get right pointer
+                Pointer target = GetTargetPointer((TKeyType)condition.Value);
+                BPlusTreeNode<TKeyType> node = ReadNode(target);
+                return node.FindFirstNodeForCondition(condition);
+            }
+        }
+
+        private bool SatisfiesCondition(CustomValueComparer comparer, object value, LeafCondition condition)
+        {
+            switch (condition.Operation)
+            {
+                case Compiler.Common.RelOp.Equals:
+                    return comparer.IsEqualTo(value, condition.Value);
+                case Compiler.Common.RelOp.GreaterThan:
+                    return comparer.IsGreaterThan(value, condition.Value);
+                case Compiler.Common.RelOp.GreaterOrEqualThan:
+                    return comparer.IsGreaterThan(value, condition.Value) || comparer.IsEqualTo(value, condition.Value);
+            }
+
+            return false;
+        }
+
         private BPlusTreeNode<TKeyType> ReadNode(Pointer pointer)
         {
             return pointer != null ? ReadNode(pointer.Short) : null;
@@ -282,10 +323,20 @@ namespace DatabaseEngine
                 BPlusTreeNode<TKeyType> leftChild = AddChild();
                 leftChild.Values = firstHalf;
                 leftChild.IsLeaf = IsLeaf;
-         
+
+                foreach (BPlusTreeNode<TKeyType> k in leftChild.PointerNodes)
+                {
+                    k.Parent = leftChild;
+                }
+
                 BPlusTreeNode<TKeyType> rightChild = AddChild();
                 rightChild.IsLeaf = IsLeaf;
-                rightChild.Values = secondHalf;
+                rightChild.Values = IsLeaf ? secondHalf : secondHalf.Skip(1).ToList();
+
+                foreach (BPlusTreeNode<TKeyType> k in rightChild.PointerNodes)
+                {
+                    k.Parent = rightChild;
+                }
 
                 BPlusTreeNodeValue middle = new BPlusTreeNodeValue { Value = Values[half].Value, LeftPointer = leftChild.Page, RightPointer = rightChild.Page };
                 Values = new List<BPlusTreeNodeValue> { middle };
@@ -315,7 +366,7 @@ namespace DatabaseEngine
                     rightChild.IsLeaf = true;
                 }
 
-                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page });
+                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page }); ;
 
                 Dirty = true;
             }
@@ -345,7 +396,7 @@ namespace DatabaseEngine
 
             Dirty = true;
 
-            if (Values.Count > MaxSize)
+            if (Values.Count >= MaxSize)
             {
                 Split();
             }

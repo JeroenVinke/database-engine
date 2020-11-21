@@ -57,5 +57,6 @@ namespace DatabaseEngine.LogicalPlan
 
             return dot;
         }
+
     }
 }

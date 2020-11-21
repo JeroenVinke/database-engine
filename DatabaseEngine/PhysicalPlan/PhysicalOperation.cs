@@ -10,6 +10,7 @@ namespace DatabaseEngine.Operations
         }
 
         public virtual List<PhysicalOperation> InputOperations { get; } = new List<PhysicalOperation>();
+        public virtual int EstimateIOCost() => 0;
 
         public virtual void Prepare()
         {
@@ -31,8 +32,5 @@ namespace DatabaseEngine.Operations
                 operation.Unprepare();
             }
         }
-
-        //public abstract int EstimateNumberOfRows();
-        public virtual int EstimateNumberOfRows() { return 0; }
     }
 }

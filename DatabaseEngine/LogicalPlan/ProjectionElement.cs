@@ -3,14 +3,24 @@ using System.Linq;
 
 namespace DatabaseEngine.LogicalPlan
 {
-    public class ProjectionElement : LogicalElement
+    public class ProjectionElement : ReadLogicalElement
     {
         public List<ProjectionColumn> Columns { get; set; }
 
-        public ProjectionElement(LogicalElement input, List<ProjectionColumn> columns)
+        public ProjectionElement(ReadLogicalElement input, List<ProjectionColumn> columns)
             : base(input)
         {
             Columns = columns;
+        }
+
+        public override int T()
+        {
+            return LeftChild.T();
+        }
+
+        public override double V(AttributeDefinition column)
+        {
+            return LeftChild.V(column);
         }
 
         public override string Stringify()

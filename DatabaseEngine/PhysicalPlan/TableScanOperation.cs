@@ -24,6 +24,15 @@ namespace DatabaseEngine.Operations
             _recordIndex = -1;
         }
 
+        public override int EstimateIOCost()
+        {
+            if (Table.TableDefinition.HasClusteredIndex())
+            {
+                return Program.StatisticsManager.B(Table.TableDefinition);
+            }
+            return Program.StatisticsManager.T(Table.TableDefinition);
+        }
+
         public override CustomTuple GetNext()
         {
             _recordIndex++;

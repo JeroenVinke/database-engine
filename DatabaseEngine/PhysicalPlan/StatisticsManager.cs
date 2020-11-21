@@ -55,38 +55,7 @@ namespace DatabaseEngine
             }
         }
 
-        public int GetSizeOfCondition(TableDefinition tableDefinition, Condition condition)
-        {
-            int sizeOfRelation = T(tableDefinition);
-            if (condition is AndCondition andCondition)
-            {
-                return sizeOfRelation * ((GetSizeOfCondition(tableDefinition, andCondition.Left) / sizeOfRelation) * (GetSizeOfCondition(tableDefinition, andCondition.Right) / sizeOfRelation));
-            }
-            if (condition is OrCondition orCondition)
-            {
-                int m1 = GetSizeOfCondition(tableDefinition, orCondition.Left);
-                int m2 = GetSizeOfCondition(tableDefinition, orCondition.Right);
-                return sizeOfRelation * (1 - ((1 - (m1 / sizeOfRelation)) * ((m2 / sizeOfRelation))));
-            }
-            else if (condition is LeafCondition leafCondition)
-            {
-                switch (leafCondition.Operation)
-                {
-                    case Compiler.Common.RelOp.Equals:
-                        return (int)Math.Round(sizeOfRelation * ((double)1 / (double)V(tableDefinition, leafCondition.Column)));
-                    case Compiler.Common.RelOp.GreaterOrEqualThan:
-                    case Compiler.Common.RelOp.GreaterThan:
-                    case Compiler.Common.RelOp.LessOrEqualThan:
-                    case Compiler.Common.RelOp.LessThan:
-                    case Compiler.Common.RelOp.NotEquals:
-                        return sizeOfRelation;
-                }
-            }
-
-            return sizeOfRelation;
-        }
-
-        private int T(TableDefinition tableDefinition)
+        public int T(TableDefinition tableDefinition)
         {
             return GetStatistics(tableDefinition.Id).Count;
         }
@@ -103,7 +72,7 @@ namespace DatabaseEngine
             Table table = _relationManager.GetTable(tableDefinition.Id);
             if (tableDefinition.HasClusteredIndex())
             {
-                operation = new IndexSeekOperation(table, table.GetIndex(tableDefinition.GetClusteredIndex().Column));
+                operation = new IndexScanOperation(table, table.GetIndex(tableDefinition.GetClusteredIndex().Column));
             }
             else
             {

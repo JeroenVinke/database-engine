@@ -14,6 +14,7 @@ namespace DatabaseEngine
         void WriteTree();
         void WriteNode();
         IBPlusTreeNode GetFirstLeaf();
+        IBPlusTreeNode FindFirstNodeForCondition(LeafCondition condition);
         IBPlusTreeNode Sibling { get; }
     }
 }

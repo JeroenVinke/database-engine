@@ -35,8 +35,7 @@ namespace DatabaseEngine.LogicalPlan
             {
                 Table table = _relationManager.GetTable(selectASTNode.From.Identifier.Identifier);
 
-                LogicalElement result = new RelationElement(table.TableDefinition);
-                Relation r;
+                ReadLogicalElement result = new RelationElement(table.TableDefinition);
 
                 Condition condition = null;
 
@@ -58,11 +57,7 @@ namespace DatabaseEngine.LogicalPlan
                 {
                     Join join = JoinNodeToJoin(table.TableDefinition, selectASTNode.Join);
 
-                    LogicalElement joinRelation = new RelationElement(join.RightTable);
-
-                    r = new Relation();
-                    r.AddRange(table.TableDefinition);
-                    r.AddRange(join.RightTable);
+                    ReadLogicalElement joinRelation = new RelationElement(join.RightTable);
 
                     (Condition leftPushedDownCondition, Condition leftover1) = TryPushdown((RelationElement)result, condition);
                     (Condition rightPushedDownCondition, Condition leftover2) = TryPushdown((RelationElement)joinRelation, leftover1);
@@ -72,24 +67,22 @@ namespace DatabaseEngine.LogicalPlan
 
                     if (leftPushedDownCondition != null)
                     {
-                        result = new SelectionElement(result, leftPushedDownCondition, table.TableDefinition);
+                        result = new SelectionElement(result, leftPushedDownCondition);
                     }
                     if (rightPushedDownCondition != null)
                     {
-                        joinRelation = new SelectionElement(joinRelation, rightPushedDownCondition, join.RightTable);
+                        joinRelation = new SelectionElement(joinRelation, rightPushedDownCondition);
                     }
 
                     result = new CartesianProductElement(result, joinRelation, join.LeftColumn, join.RightColumn);
                 }
                 else
                 {
-                    r = table.TableDefinition;
-
-                    result = new RelationElement(r);
+                    result = new RelationElement(table.TableDefinition);
                 }
 
 
-                result = new SelectionElement(result, condition, r);
+                result = new SelectionElement(result, condition);
                 result = new ProjectionElement(result, SelectColumnsToColumns(table, selectASTNode.SelectColumns));
 
                 return result;
@@ -173,7 +166,7 @@ namespace DatabaseEngine.LogicalPlan
             return (pushedDownCondition, condition);
         }
 
-        private bool TryOptimizeIN(SelectASTNode selectASTNode, LogicalElement input, TableDefinition tableDefinition, out CartesianProductElement result)
+        private bool TryOptimizeIN(SelectASTNode selectASTNode, ReadLogicalElement input, TableDefinition tableDefinition, out CartesianProductElement result)
         {
             if(selectASTNode.Condition is RelOpASTNode relOpASTNode
                 && relOpASTNode.RelationOperator == Compiler.Common.RelOp.In)
@@ -204,7 +197,7 @@ namespace DatabaseEngine.LogicalPlan
                 if (innerSelectASTNode != null
                     && outerIdentifierASTNode != null)
                 {
-                    result = new CartesianProductElement(input, GetElementForTreeNode(innerSelectASTNode), GetColumnFromIdentifierNode(tableDefinition, outerIdentifierASTNode), SelectColumnsToColumns(_relationManager.GetTable(innerSelectASTNode.From.Identifier.Identifier), innerSelectASTNode.SelectColumns).First().AttributeDefinition);
+                    result = new CartesianProductElement(input, GetElementForTreeNode(innerSelectASTNode) as ReadLogicalElement, GetColumnFromIdentifierNode(tableDefinition, outerIdentifierASTNode), SelectColumnsToColumns(_relationManager.GetTable(innerSelectASTNode.From.Identifier.Identifier), innerSelectASTNode.SelectColumns).First().AttributeDefinition);
                     return true;
                 }
             }

@@ -32,11 +32,6 @@ namespace DatabaseEngine.Operations
             return null;
         }
 
-        public override int EstimateNumberOfRows()
-        {
-            return base.EstimateNumberOfRows();
-        }
-
         private bool SatisfiesCondition(CustomTuple tuple, Condition condition)
         {
             if (condition == null)

@@ -1,19 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.BTree;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class IndexSeekOperation : PhysicalOperation
     {
         public Table Table { get; set; }
+        public Condition Condition { get; }
 
         public IBPlusTreeNode _index;
         public IBPlusTreeNode _currentNode;
-        private int _currentIndex = -1;
+        private ScanEnumerator _enumerator;
 
-        public IndexSeekOperation(Table table, IBPlusTreeNode index)
+        public IndexSeekOperation(Table table, IBPlusTreeNode index, Condition condition)
             : base(new List<PhysicalOperation>())
         {
             Table = table;
+            Condition = condition;
             _index = index;
         }
 
@@ -22,30 +25,17 @@ namespace DatabaseEngine.Operations
             base.Prepare();
 
             _currentNode = _index.GetFirstLeaf();
-            _currentIndex = -1;
+            _enumerator = new ScanEnumerator(Table.TableDefinition, _index, Condition);
         }
 
         public override CustomTuple GetNext()
         {
-            while (_currentNode != null)
+            if (_enumerator.MoveNext())
             {
-                int next = _currentIndex + 1;
+                Block block = Table.MemoryManager.Read(Table.TableDefinition, _enumerator.CurrentValue.Pointer);
+                Record record = block.GetRecordForRowId(_enumerator.CurrentValue.Pointer.Index);
 
-                if (_currentNode.Values.Count > next)
-                {
-
-                    Block block = Table.MemoryManager.Read(Table.TableDefinition, _currentNode.Values[next].Pointer);
-                    Record record = block.GetRecordForRowId(_currentNode.Values[next].Pointer.Index);
-
-                    _currentIndex++;
-
-                    return new CustomTuple(Table.TableDefinition).FromRecord(record);
-                }
-                else
-                {
-                    _currentIndex = -1;
-                    _currentNode = _currentNode.Sibling;
-                }
+                return new CustomTuple(Table.TableDefinition).FromRecord(record);
             }
 
             return null;
