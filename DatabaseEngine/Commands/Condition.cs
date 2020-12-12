@@ -2,6 +2,8 @@
 {
     public abstract class Condition
     {
+        public abstract Condition Clone();
+
         public bool SatisfiesCondition(CustomTuple tuple)
         {
             if (this is AndCondition andCondition)

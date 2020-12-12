@@ -95,21 +95,6 @@ namespace DatabaseEngine
             }
             LogicalElement logicalTree = LogicalQueryPlan.GetTreeForQuery(query);
 
-            List<LogicalElement> postorderLogicalTree = AppendPostOrder(new List<LogicalElement>(), logicalTree);
-
-
-            //List<BBNode> queue = new List<BBNode>();
-            //QueryPlanBBGraph graph = new QueryPlanBBGraph
-            //{
-            //    Root = new QueryPlanBBNode(logicalTree, null)
-            //};
-
-            //graph.Expand(graph.Root);
-
-            //List<BBNode> leastCostPath = GetLeastCostPath(root);
-
-
-            return new List<CustomTuple>();
             List<CustomTuple> results = new List<CustomTuple>();
 
             if (logicalTree == null)
@@ -117,15 +102,31 @@ namespace DatabaseEngine
                 return results;
             }
 
-            //if (logicalTree is ReadLogicalElement readLogicalElement)
-            //{
-            //    int t = readLogicalElement.T();
-            //}
+            List<LogicalElement> postorderLogicalTree = AppendPostOrder(new List<LogicalElement>(), logicalTree);
+
+            QueryPlanNode root = new QueryPlanNode(null, null);
+
+            List<QueryPlanNode> lastOptions = new List<QueryPlanNode> { root };
+
+            for (int i = 0; i < postorderLogicalTree.Count; i++)
+            {
+                LogicalElement element = postorderLogicalTree[i];
+
+                Dictionary<QueryPlanNode, int> options = GetOptions(element);
+                ConnectEndNodesToNodes(lastOptions, options.Select(x => x.Key));
+
+                lastOptions = options.Select(x => x.Key).ToList();
+            }
+
+            List<QueryPlanNode> leastCostPath = GetLeastCostPath(root);
+
+            PhysicalOperation physicalOperation = PhysicalQueryPlan.CreateFromPath(logicalTree, leastCostPath);
+
+
             if (query == UserQuery)
             {
                 ;
             }
-            PhysicalOperation physicalTree = PhysicalQueryPlan.GetFromLogicalTree(logicalTree);
 
             if (debug)
             {
@@ -133,13 +134,13 @@ namespace DatabaseEngine
                 //;
             }
 
-            physicalTree.Prepare();
+            physicalOperation.Prepare();
 
 
             CustomTuple result;
             do
             {
-                result = physicalTree.GetNext();
+                result = physicalOperation.GetNext();
 
                 if (result != null)
                 {
@@ -161,6 +162,120 @@ namespace DatabaseEngine
             return results;
         }
 
+        private static void ConnectEndNodesToNodes(IEnumerable<QueryPlanNode> nodes, IEnumerable<QueryPlanNode> endNodes)
+        {
+            foreach (QueryPlanNode node in nodes)
+            {
+                ConnectEndNodesToNodes(node, endNodes);
+            }
+        }
+
+        private static void ConnectEndNodesToNodes(QueryPlanNode node, IEnumerable<QueryPlanNode> endNodes)
+        {
+            if (node.Edges.Count == 0)
+            {
+                foreach(QueryPlanNode endNode in endNodes)
+                {
+                    node.Edges.Add(new QueryPlanNodeEdge
+                    {
+                        From = node,
+                        To = endNode,
+                        Cost = 0
+                    });
+                }
+            }
+            else
+            {
+
+                foreach (QueryPlanNode node1 in node.Edges.Select(x => x.To))
+                {
+                    ConnectEndNodesToNodes(node1, endNodes);
+                }
+            }
+        }
+
+        private static Dictionary<QueryPlanNode, int> GetOptions(LogicalElement element)
+        {
+            Dictionary<QueryPlanNode, int> options = new Dictionary<QueryPlanNode, int>();
+
+            if (element is ProjectionElement p)
+            {
+                PhysicalOperation proj = new ProjectionOperation(element, null, p.Columns.Select(x => x.AttributeDefinition).ToList());
+                options.Add(new QueryPlanNode(element, proj), proj.GetCost());
+            }
+            else if (element is SelectionElement selectionElement)
+            {
+                if (selectionElement.LeftChild is RelationElement relationElement)
+                {
+                    Table table = Program.RelationManager.GetTable(relationElement.Relation.Id);
+
+                    PhysicalOperation tableScan = new TableScanOperation(element, table);
+                    if (selectionElement.Condition != null)
+                    {
+                        PhysicalOperation f = new FilterOperation(element, tableScan, selectionElement.Condition);
+                        options.Add(new QueryPlanNode(element, f), f.GetCost());
+                    }
+                    else
+                    {
+                        options.Add(new QueryPlanNode(element, tableScan), tableScan.GetCost());
+                    }
+
+                    Condition clonedCondition = selectionElement.Condition?.Clone();
+
+                    if (TryExtractConstantConditionWithIndex(relationElement.Relation, clonedCondition, out LeafCondition constantCondition))
+                    {
+                        selectionElement.Condition = selectionElement.Condition.Simplify();
+
+                        PhysicalOperation indexSeek = new IndexSeekOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
+
+                        if (selectionElement.Condition != null)
+                        {
+                            PhysicalOperation f = new FilterOperation(element, indexSeek, clonedCondition);
+                            options.Add(new QueryPlanNode(element, f), f.GetCost());
+                        }
+                        else
+                        {
+                            options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
+                        }
+                    }
+                    else
+                    {
+                        if (table.TableDefinition.HasClusteredIndex())
+                        {
+                            PhysicalOperation indexSeek = new IndexSeekOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
+
+                            if (selectionElement.Condition != null)
+                            {
+                                PhysicalOperation f = new FilterOperation(element, indexSeek, selectionElement.Condition);
+                                options.Add(new QueryPlanNode(element, f), f.GetCost());
+                            }
+                            else
+                            {
+                                options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
+                            }
+                        }
+                    }
+                }
+            }
+            else if (element is RelationElement relElement)
+            {
+                Table table = Program.RelationManager.GetTable(relElement.Relation.Id);
+
+                if (table.TableDefinition.HasClusteredIndex())
+                {
+                    PhysicalOperation indexSeek = new IndexScanOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
+                    options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
+                }
+                else
+                {
+                    PhysicalOperation tableScan = new TableScanOperation(element, table);
+                    options.Add(new QueryPlanNode(element, tableScan), tableScan.GetCost());
+                }
+            }
+
+            return options;
+        }
+
         private static List<LogicalElement> AppendPostOrder(List<LogicalElement> result, LogicalElement center)
         {
             if (center.LeftChild != null)
@@ -176,170 +291,16 @@ namespace DatabaseEngine
             return result;
         }
 
-        //private class QueryPlanBBGraph : BBGraph
-        //{
-        //    public override void Expand(BBNode node)
-        //    {
-        //        QueryPlanBBNode bbNode = (QueryPlanBBNode)node;
 
-        //        if (bbNode.LogicalElement.LeftChild != null)
-        //        {
-        //            Dictionary<QueryPlanBBNode, int> leftOptions = GetOptions(bbNode.LogicalElement.LeftChild);
-
-        //            foreach (KeyValuePair<QueryPlanBBNode, int> leftOption in leftOptions)
-        //            {
-        //                bbNode.Edges.Add(new BBEdge
-        //                {
-        //                    From = bbNode,
-        //                    To = leftOption.Key,
-        //                    Cost = leftOption.Value
-        //                });
-
-        //                if (bbNode.LogicalElement.LeftChild != null)
-        //                {
-        //                    Dictionary<QueryPlanBBNode, int> rightOptions = GetOptions(bbNode.LogicalElement.RightChild);
-
-        //                    bbNode.Edges.Add(new BBEdge
-        //                    {
-        //                        From = left,
-        //                        To = right,
-        //                        Cost = right.Edges.Min(x => x.Cost)
-        //                    });
-        //                }
-        //            }
-
-        //        }
-        //    }
-
-        //    public QueryPlanBBNode Expand(LogicalElement element)
-        //    {
-        //        if (element == null)
-        //        {
-        //            return null;
-        //        }
-
-
-                
-
-
-        //        ConnectEndNodesToNodes(o1.Select(x => x.Key), endNode);
-
-        //        return startNode;
-        //    }
-
-        //    public QueryPlanBBNode ExpandChildren(QueryPlanBBNode bbNode)
-        //    {
-        //        QueryPlanBBNode left = Expand(bbNode.LogicalElement.LeftChild);
-        //        QueryPlanBBNode right = Expand(bbNode.LogicalElement.RightChild);
-
-        //        bbNode.Edges.Add(new BBEdge
-        //        {
-        //            From = bbNode,
-        //            To = left,
-        //            Cost = left.Edges.Min(x => x.Cost)
-        //        });
-
-        //        return bbNode;
-        //    }
-
-        //    private void ConnectEndNodesToNode(IEnumerable<QueryPlanBBNode> nodes, EndBBNode endNode)
-        //    {
-        //        foreach(QueryPlanBBNode node in nodes)
-        //        {
-        //            ConnectEndNodesToNode(node, endNode);
-        //        }
-        //    }
-
-        //    private void ConnectEndNodesToNode(QueryPlanBBNode node, EndBBNode endNode)
-        //    {
-        //        if (node.Edges.Count == 0) 
-        //        {
-        //            node.Edges.Add(new BBEdge
-        //            {
-        //                From = node,
-        //                To = endNode,
-        //                Cost = 0
-        //            });
-        //        }
-        //    }
-
-        //    private Dictionary<QueryPlanBBNode, int> GetOptions(LogicalElement element)
-        //    {
-        //        Dictionary<QueryPlanBBNode, int> options = new Dictionary<QueryPlanBBNode, int>();
-
-        //        if (element is ProjectionElement p)
-        //        {
-        //            PhysicalOperation proj = new ProjectionOperation(null, p.Columns.Select(x => x.AttributeDefinition).ToList());
-        //            options.Add(new QueryPlanBBNode(element, proj), proj.GetCost());
-        //        }
-        //        else if (element is SelectionElement selectionElement)
-        //        {
-        //            if (selectionElement.LeftChild is RelationElement relationElement)
-        //            {
-        //                Table table = Program.RelationManager.GetTable(relationElement.Relation.Id);
-
-        //                if (TryExtractConstantConditionWithIndex(relationElement.Relation, selectionElement.Condition, out LeafCondition constantCondition))
-        //                {
-        //                    selectionElement.Condition = selectionElement.Condition.Simplify();
-
-        //                    PhysicalOperation indexSeek = new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
-
-        //                    if (selectionElement.Condition != null)
-        //                    {
-        //                        PhysicalOperation f = new FilterOperation(indexSeek, selectionElement.Condition);
-        //                        options.Add(new QueryPlanBBNode(element, f), f.GetCost());
-        //                    }
-        //                    else
-        //                    {
-        //                        options.Add(new QueryPlanBBNode(element, indexSeek), indexSeek.GetCost());
-        //                    }
-        //                }
-        //                else
-        //                {
-        //                    if (table.TableDefinition.HasClusteredIndex())
-        //                    {
-        //                        PhysicalOperation indexSeek = new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
-
-        //                        if (selectionElement.Condition != null)
-        //                        {
-        //                            PhysicalOperation f = new FilterOperation(indexSeek, selectionElement.Condition);
-        //                            options.Add(new QueryPlanBBNode(element, f), f.GetCost());
-        //                        }
-        //                        else
-        //                        {
-        //                            options.Add(new QueryPlanBBNode(element, indexSeek), indexSeek.GetCost());
-        //                        }
-        //                    }
-        //                    else
-        //                    {
-        //                        PhysicalOperation tableScan = new TableScanOperation(table);
-        //                        if (selectionElement.Condition != null)
-        //                        {
-        //                            PhysicalOperation f = new FilterOperation(tableScan, selectionElement.Condition);
-        //                            options.Add(new QueryPlanBBNode(element, f), f.GetCost());
-        //                        }
-        //                        else
-        //                        {
-        //                            options.Add(new QueryPlanBBNode(element, tableScan), tableScan.GetCost());
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        return options;
-        //    }
-        //}
-
-        private static List<BBNode> GetLeastCostPath(BBNode root)
+        private static List<QueryPlanNode> GetLeastCostPath(QueryPlanNode root)
         {
-            BBNode cur = root;
-            List<BBNode> result = new List<BBNode>();
+            QueryPlanNode cur = root;
+            List<QueryPlanNode> result = new List<QueryPlanNode>();
             result.Add(cur);
 
             while(cur != null)
             {
-                BBEdge cheapestEdge = cur.Edges.OrderBy(x => x.Cost).FirstOrDefault();
+                QueryPlanNodeEdge cheapestEdge = cur.Edges.OrderBy(x => x.Cost).FirstOrDefault();
                 if (cheapestEdge != null)
                 {
                     cur = cheapestEdge.To;
@@ -357,35 +318,6 @@ namespace DatabaseEngine
 
             return result;
         }
-
-        
-
-        //private static void ExpandChildren(LogicalElement cur, BBNode curBBNode)
-        //{
-        //    List<BBNode> leftOptions = GetPhysicalOptions(cur.LeftChild);
-        //    foreach (BBNode option in leftOptions)
-        //    {
-        //        curBBNode.Edges.Add(new BBEdge
-        //        {
-        //            From = curBBNode,
-        //            To = option
-        //        });
-        //    }
-
-        //    List<BBNode> rightOptions = GetPhysicalOptions(cur.RightChild);
-        //    foreach (BBNode option2 in rightOptions)
-        //    {
-        //        foreach (BBNode option1 in leftOptions)
-        //        {
-        //            curBBNode.Edges.Add(new BBEdge
-        //            {
-        //                From = option1,
-        //                To = option2
-        //            });
-        //        }
-        //    }
-        //}
-
 
         private static bool TryExtractConstantConditionWithIndex(Relation relation, Condition condition, out LeafCondition result)
         {

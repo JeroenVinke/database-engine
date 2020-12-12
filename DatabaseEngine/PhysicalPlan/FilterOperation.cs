@@ -1,23 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
 
 namespace DatabaseEngine.Operations
 {
     public class FilterOperation : PhysicalOperation
     {
-        private PhysicalOperation _inputOperation;
         public Condition Condition { get; set; }
 
-        public FilterOperation(PhysicalOperation inputOperation, Condition condition)
-            :base (new List<PhysicalOperation> { inputOperation })
+        public FilterOperation(LogicalElement logicalElement, PhysicalOperation inputOperation, Condition condition)
+            :base (logicalElement)
         {
-            _inputOperation = inputOperation;
+            Left = inputOperation;
             Condition = condition;
         }
 
         public override CustomTuple GetNext()
         {
-            CustomTuple tuple = _inputOperation.GetNext();
+            CustomTuple tuple = Left.GetNext();
 
             if (tuple != null)
             {

@@ -14,4 +14,8 @@
     <ProjectReference Include="..\Parser\Parser.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="BranchAndBound\" />
+  </ItemGroup>
+
 </Project>

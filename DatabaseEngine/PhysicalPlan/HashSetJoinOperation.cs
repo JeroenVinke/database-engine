@@ -1,20 +1,18 @@
-﻿using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class HashSetJoinOperation : PhysicalOperation
     {
-        private PhysicalOperation _left;
-        private PhysicalOperation _right;
         private AttributeDefinition _leftJoinColumn;
         private AttributeDefinition _rightJoinColumn;
 
-        public HashSetJoinOperation(PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
-            : base(new List<PhysicalOperation>() { left, right })
+        public HashSetJoinOperation(LogicalElement logicalElement, PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
+            : base(logicalElement)
         {
-            _left = left;
-            _right = right;
+            Left = left;
+            Right = right;
             _leftJoinColumn = leftJoinColumn;
             _rightJoinColumn = rightJoinColumn;
         }

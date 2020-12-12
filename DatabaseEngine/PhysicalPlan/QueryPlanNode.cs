@@ -1,15 +1,16 @@
 ﻿using DatabaseEngine.LogicalPlan;
 using DatabaseEngine.Operations;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.PhysicalPlan
 {
-    public class QueryPlanBBNode : BBNode
+    public class QueryPlanNode
     {
         public PhysicalOperation PhysicalOperation { get; set; }
         public LogicalElement LogicalElement { get; set; }
-        public bool IsRoot => PhysicalOperation == null;
+        public List<QueryPlanNodeEdge> Edges { get; set; } = new List<QueryPlanNodeEdge>();
 
-        public QueryPlanBBNode(LogicalElement logicalElement, PhysicalOperation physicalOperation)
+        public QueryPlanNode(LogicalElement logicalElement, PhysicalOperation physicalOperation)
         {
             LogicalElement = logicalElement;
             PhysicalOperation = physicalOperation;

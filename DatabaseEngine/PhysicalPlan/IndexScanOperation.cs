@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
@@ -10,8 +11,8 @@ namespace DatabaseEngine.Operations
         public IBPlusTreeNode _currentNode;
         private int _currentIndex = -1;
 
-        public IndexScanOperation(Table table, IBPlusTreeNode index)
-            : base(new List<PhysicalOperation>())
+        public IndexScanOperation(LogicalElement logicalElement, Table table, IBPlusTreeNode index)
+            : base(logicalElement)
         {
             Table = table;
             _index = index;
@@ -23,6 +24,15 @@ namespace DatabaseEngine.Operations
 
             _currentNode = _index.GetFirstLeaf();
             _currentIndex = -1;
+        }
+
+        public override int EstimateIOCost()
+        {
+            if (Table.TableDefinition.HasClusteredIndex())
+            {
+                return Program.StatisticsManager.B(Table.TableDefinition);
+            }
+            return Program.StatisticsManager.T(Table.TableDefinition);
         }
 
         public override CustomTuple GetNext()

@@ -22,14 +22,12 @@ namespace DatabaseEngine
             TableDefinition = tableDefinition;
             _relationManager = relationManager;
 
+            RootBlock = memoryManager.Read(tableDefinition, rootBlock);
+
             if (tableDefinition.HasClusteredIndex())
             {
                 Index index = tableDefinition.GetClusteredIndex();
                 _indexesWithTrees.Add(index, GetBTreeForIndex(rootBlock, index));
-            }
-            else
-            {
-                RootBlock = memoryManager.Read(tableDefinition, rootBlock);
             }
 
             foreach(Index index in TableDefinition.NonClusteredIndexes())

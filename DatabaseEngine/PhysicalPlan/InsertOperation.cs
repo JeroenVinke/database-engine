@@ -1,22 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class InsertOperation : PhysicalOperation
     {
-        public PhysicalOperation Input { get; set; }
         public Table Table { get; set; }
 
-        public InsertOperation(Table table, PhysicalOperation input)
-            : base(new List<PhysicalOperation>())
+        public InsertOperation(LogicalElement logicalElement, Table table, PhysicalOperation input)
+            : base(logicalElement)
         {
-            Input = input;
+            Left = input;
             Table = table;
         }
 
         public override CustomTuple GetNext()
         {
-            CustomTuple tuple = Input.GetNext();
+            CustomTuple tuple = Left.GetNext();
 
             if (tuple != null)
             {

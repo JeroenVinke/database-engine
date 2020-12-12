@@ -1,4 +1,5 @@
 ﻿using DatabaseEngine.LogicalPlan;
+using DatabaseEngine.PhysicalPlan;
 using DatabaseEngine.Relations;
 using System;
 using System.Collections.Generic;
@@ -17,115 +18,27 @@ namespace DatabaseEngine.Operations
             _statisticsManager = statisticsManager;
         }
 
-        public PhysicalOperation GetFromLogicalTree(LogicalElement logicalTree)
+        internal PhysicalOperation CreateFromPath(LogicalElement logicalTree, List<QueryPlanNode> path)
         {
-            if (logicalTree is InsertElement insertElement)
-            {
-                return new InsertOperation(_relationManager.GetTable(insertElement.TableDefinition.Id), GetDefaultPhysicalOperation(insertElement.LeftChild));
-            }
-            return GetDefaultPhysicalOperation(logicalTree as ReadLogicalElement);
+            ApplyInputOperations(logicalTree, path);
+
+            return path.First(x => x.LogicalElement == logicalTree).PhysicalOperation;
         }
 
-        private PhysicalOperation GetDefaultPhysicalOperation(LogicalElement element)
+        private void ApplyInputOperations(LogicalElement logicalTree, List<QueryPlanNode> path)
         {
-            if (element is MemorySetElement memorySetElement)
+            if (logicalTree == null)
             {
-                return new MemorySetOperation(memorySetElement.Set);
-            }
-            else if (element is ProjectionElement projectionElement)
-            {
-                return new ProjectionOperation(GetDefaultPhysicalOperation(projectionElement.LeftChild), projectionElement.Columns.Select(x => x.AttributeDefinition).ToList());
-            }
-            else if (element is RelationElement relationElement)
-            {
-                Table table = _relationManager.GetTable(relationElement.Relation.Id);
-
-                if (table.TableDefinition.HasClusteredIndex())
-                {
-                    return new IndexScanOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
-                }
-                return new TableScanOperation(table);
-            }
-            else if (element is SelectionElement selectionElement)
-            {
-                PhysicalOperation input = GetDefaultPhysicalOperation(selectionElement.LeftChild);
-
-                // has index
-                if (selectionElement.LeftChild is RelationElement relElement
-                    && TryExtractConstantConditionWithIndex(relElement.Relation, selectionElement.Condition, out LeafCondition constantCondition))
-                {
-                    selectionElement.Condition = selectionElement.Condition.Simplify();
-
-                    Table table = Program.RelationManager.GetTable(relElement.Relation.Id);
-                    PhysicalOperation indexSeek = new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
-
-                    if (selectionElement.Condition != null)
-                    {
-                        return new FilterOperation(indexSeek, selectionElement.Condition);
-                    }
-                    else
-                    {
-                        return indexSeek;
-                    }
-                }
-
-                return new FilterOperation(input, selectionElement.Condition);
-            }
-            else if (element is CartesianProductElement cartesianProductElement)
-            {
-                PhysicalOperation left = GetDefaultPhysicalOperation(element.LeftChild);
-                PhysicalOperation right = GetDefaultPhysicalOperation(element.RightChild);
-
-                //int leftSize = left.EstimateNumberOfRows();
-                //int rightSize = right.EstimateNumberOfRows();
-
-                //int x = _statisticsManager.GetSizeOfCondition((right.InputOperations.First() as TableScanOperation).Table.TableDefinition, (right as FilterOperation).Condition);
-
-                return new NestedLoopJoinOperation(left, right, cartesianProductElement.LeftJoinColumn, cartesianProductElement.RightJoinColumn);
+                return;
             }
 
-            return null;
-        }
+            PhysicalOperation curNode = logicalTree != null ? path.First(x => x.LogicalElement == logicalTree)?.PhysicalOperation : null;
+            PhysicalOperation leftInput = logicalTree.LeftChild != null ? path.First(x => x.LogicalElement == logicalTree.LeftChild)?.PhysicalOperation : null;
+            PhysicalOperation rightInput = logicalTree.RightChild != null ? path.First(x => x.LogicalElement == logicalTree.RightChild)?.PhysicalOperation : null;
+            curNode?.SetInput(leftInput, rightInput);
 
-        private bool TryExtractConstantConditionWithIndex(Relation relation, Condition condition, out LeafCondition result)
-        {
-            result = null;
-
-            if (condition is AndCondition andCondition)
-            {
-                if (TryExtractConstantConditionWithIndex(relation, andCondition.Left, out result))
-                {
-                    return true;
-                }
-                else if (TryExtractConstantConditionWithIndex(relation, andCondition.Right, out result))
-                {
-                    return true;
-                }
-
-                return false;
-            }
-            else if (condition is LeafCondition leaf
-                && leaf.Operation == Compiler.Common.RelOp.Equals)
-            {
-                foreach(Index index in (relation as TableDefinition).Indexes)
-                {
-                    if (leaf.Column == (relation as TableDefinition).GetAttributeByName(index.Column))
-                    {
-                        result = new LeafCondition()
-                        {
-                            Column = leaf.Column,
-                            Operation = leaf.Operation,
-                            Value = leaf.Value
-                        };
-
-                        leaf.AlwaysTrue = true;
-
-                        return true;
-                    }
-                }
-            }
-
-            return false;
+            ApplyInputOperations(logicalTree.LeftChild, path);
+            ApplyInputOperations(logicalTree.RightChild, path);
         }
 
         //private PhysicalOperation FindIndexes(SelectionElement selectionElement)
@@ -180,11 +93,11 @@ namespace DatabaseEngine.Operations
         {
             if (element is MemorySetElement memorySetElement)
             {
-                return new MemorySetOperation(memorySetElement.Set);
+                return new MemorySetOperation(element, memorySetElement.Set);
             }
             else if (element is ProjectionElement projectionElement)
             {
-                return new ProjectionOperation(GetDefaultPhysicalOperation(input, projectionElement.LeftChild), projectionElement.Columns.Select(x => x.AttributeDefinition).ToList());
+                return new ProjectionOperation(element, GetDefaultPhysicalOperation(input, projectionElement.LeftChild), projectionElement.Columns.Select(x => x.AttributeDefinition).ToList());
             }
             else if (element is RelationElement relationElement)
             {
@@ -192,9 +105,9 @@ namespace DatabaseEngine.Operations
 
                 if (table.TableDefinition.HasClusteredIndex())
                 {
-                    return new IndexScanOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
+                    return new IndexScanOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
                 }
-                return new TableScanOperation(table);
+                return new TableScanOperation(element, table);
             }
 
             return null;

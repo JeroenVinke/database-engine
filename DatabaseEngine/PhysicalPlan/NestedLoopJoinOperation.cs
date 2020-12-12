@@ -1,21 +1,18 @@
-﻿using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using DatabaseEngine.LogicalPlan;
 
 namespace DatabaseEngine.Operations
 {
     public class NestedLoopJoinOperation : PhysicalOperation
     {
-        private PhysicalOperation _left;
-        private PhysicalOperation _right;
         private CustomTuple _leftTuple;
         private AttributeDefinition _leftJoinColumn;
         private AttributeDefinition _rightJoinColumn;
 
-        public NestedLoopJoinOperation(PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
-            : base(new List<PhysicalOperation>() { left, right })
+        public NestedLoopJoinOperation(LogicalElement logicalElement, PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
+            : base(logicalElement)
         {
-            _left = left;
-            _right = right;
+            Left = left;
+            Right = right;
             _leftJoinColumn = leftJoinColumn;
             _rightJoinColumn = rightJoinColumn;
         }
@@ -24,25 +21,25 @@ namespace DatabaseEngine.Operations
         {
             base.Prepare();
 
-            _leftTuple = _left.GetNext();
+            _leftTuple = Left.GetNext();
         }
 
         public override CustomTuple GetNext()
         {
             while (true)
             {
-                CustomTuple rightTuple = _right.GetNext();
+                CustomTuple rightTuple = Right.GetNext();
 
                 if (rightTuple == null)
                 {
-                    _right.Unprepare();
-                    _leftTuple = _left.GetNext();
-                    _right.Prepare();
+                    Right.Unprepare();
+                    _leftTuple = Left.GetNext();
+                    Right.Prepare();
                 }
                 else if (_leftTuple != null && _leftTuple.Joins(rightTuple, _leftJoinColumn, _rightJoinColumn))
                 {
                     CustomTuple result = _leftTuple;
-                    _leftTuple = _left.GetNext();
+                    _leftTuple = Left.GetNext();
                     return result.Merge(rightTuple);
                 }
 

@@ -62,7 +62,10 @@ namespace DatabaseEngine
 
         public int B(TableDefinition tableDefinition)
         {
-            return GetStatistics(tableDefinition.Id).Count / GetTotalSizeOfTuple(tableDefinition, tableDefinition);
+            double recordsPerBlock = (double)Block.BlockSize / (double)GetTotalSizeOfTuple(tableDefinition, tableDefinition);
+            double ratio = 1 / recordsPerBlock;
+
+            return (int)Math.Ceiling(GetStatistics(tableDefinition.Id).Count * ratio);
         }
 
         private void CalculateStatistic(TableDefinition tableDefinition, TableStatistics statistics)
@@ -72,11 +75,11 @@ namespace DatabaseEngine
             Table table = _relationManager.GetTable(tableDefinition.Id);
             if (tableDefinition.HasClusteredIndex())
             {
-                operation = new IndexScanOperation(table, table.GetIndex(tableDefinition.GetClusteredIndex().Column));
+                operation = new IndexScanOperation(new RelationElement(tableDefinition), table, table.GetIndex(tableDefinition.GetClusteredIndex().Column));
             }
             else
             {
-                operation = new TableScanOperation(table);
+                operation = new TableScanOperation(new RelationElement(tableDefinition), table);
             }
 
             operation.Prepare();

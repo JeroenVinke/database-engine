@@ -10,9 +10,20 @@ namespace DatabaseEngine
         public object Value { get; set; }
         public bool AlwaysTrue { get; set; }
 
+        public override Condition Clone()
+        {
+            return new LeafCondition()
+            {
+                Column = Column,
+                Operation = Operation,
+                Value = Value,
+                AlwaysTrue = AlwaysTrue
+            };
+        }
+
         public override string ToString()
         {
-            return Column.Name + " " + new RelOpASTNode(null, Operation, null).RelOpAsString + " " + Value.ToString();
+            return Column.Name + " " + new RelOpASTNode(null, Operation, null).RelOpAsString + " " + Value.ToString() + " " + (AlwaysTrue ? " ALWAYS TRUE!" : "");
         }
     }
 }

@@ -1,25 +1,34 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public abstract class PhysicalOperation
     {
-        public PhysicalOperation(List<PhysicalOperation> inputOperations)
+        public PhysicalOperation Left { get; set; }
+        public PhysicalOperation Right { get; set; }
+
+        public PhysicalOperation(LogicalElement logicalElement)
         {
-            InputOperations = inputOperations;
+            LogicalElement = logicalElement;
         }
 
-        public virtual List<PhysicalOperation> InputOperations { get; } = new List<PhysicalOperation>();
+        public void SetInput(PhysicalOperation left, PhysicalOperation right)
+        {
+            Left = left;
+            Right = right;
+        }
+
+        public LogicalElement LogicalElement { get; }
+
         public virtual int EstimateIOCost() => 0;
         public virtual int EstimateCPUCost() => 0;
         public virtual int GetCost() => EstimateCPUCost() + EstimateIOCost() * 2;
 
         public virtual void Prepare()
         {
-            foreach(PhysicalOperation operation in InputOperations)
-            {
-                operation.Prepare();
-            }
+            Left?.Prepare();
+            Right?.Prepare();
         }
 
         public virtual CustomTuple GetNext()
@@ -29,10 +38,8 @@ namespace DatabaseEngine.Operations
 
         public virtual void Unprepare()
         {
-            foreach (PhysicalOperation operation in InputOperations)
-            {
-                operation.Unprepare();
-            }
+            Left?.Unprepare();
+            Right?.Unprepare();
         }
     }
 }

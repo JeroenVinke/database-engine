@@ -1,18 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class UnionOperator : PhysicalOperation
     {
-        private PhysicalOperation _left;
-        private PhysicalOperation _right;
         private bool _leftDone = false;
 
-        public UnionOperator(PhysicalOperation left, PhysicalOperation right)
-            : base(new List<PhysicalOperation>() { left, right })
+        public UnionOperator(LogicalElement logicalElement, PhysicalOperation left, PhysicalOperation right)
+            : base(logicalElement)
         {
-            _left = left;
-            _right = right;
+            Left = left;
+            Right = right;
         }
 
         public override CustomTuple GetNext()
@@ -21,7 +20,7 @@ namespace DatabaseEngine.Operations
 
             if (!_leftDone)
             {
-                result = _left.GetNext();
+                result = Left.GetNext();
                 if (result == null)
                 {
                     _leftDone = true;
@@ -32,7 +31,7 @@ namespace DatabaseEngine.Operations
                 }
             }
             
-            result = _right.GetNext();
+            result = Right.GetNext();
             if (result == null)
             {
                 return null;

@@ -1,17 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class TopOperation : PhysicalOperation
     {
-        private PhysicalOperation _inputOperation;
         private int? _amount;
         private int _returned = 0;
 
-        public TopOperation(PhysicalOperation inputOperation, int? amount)
-            :base (new List<PhysicalOperation> { inputOperation })
+        public TopOperation(LogicalElement logicalElement, PhysicalOperation inputOperation, int? amount)
+            :base (logicalElement)
         {
-            _inputOperation = inputOperation;
+            Left = inputOperation;
             _amount = amount;
         }
 
@@ -24,7 +24,7 @@ namespace DatabaseEngine.Operations
 
         public override CustomTuple GetNext()
         {
-            CustomTuple tuple = _inputOperation.GetNext();
+            CustomTuple tuple = Left.GetNext();
 
             if (tuple != null && _returned < _amount)
             {

@@ -1,5 +1,6 @@
 ﻿using Compiler.Common;
 using DatabaseEngine.BTree;
+using DatabaseEngine.LogicalPlan;
 using System;
 using System.Collections.Generic;
 
@@ -14,8 +15,8 @@ namespace DatabaseEngine.Operations
         public IBPlusTreeNode _currentNode;
         private ScanEnumerator _enumerator;
 
-        public IndexSeekOperation(Table table, IBPlusTreeNode index, Condition condition)
-            : base(new List<PhysicalOperation>())
+        public IndexSeekOperation(LogicalElement logicalElement, Table table, IBPlusTreeNode index, Condition condition)
+            : base(logicalElement)
         {
             Table = table;
             Condition = condition;
@@ -28,6 +29,27 @@ namespace DatabaseEngine.Operations
 
             _currentNode = _index.GetFirstLeaf();
             _enumerator = new ScanEnumerator(Table.TableDefinition, _index, Condition, IsLeftToRightCondition(Condition));
+        }
+
+        public override int EstimateIOCost()
+        {
+            int b = Program.StatisticsManager.B(Table.TableDefinition);
+
+            if (b == 0)
+            {
+                return 0;
+            }
+
+            int t = Program.StatisticsManager.T(Table.TableDefinition);
+
+            if (t == 0)
+            {
+                return 0;
+            }
+
+            double ratioRecordToBlock = (double)b / (double)t;
+
+            return (int)Math.Ceiling(((ReadLogicalElement)LogicalElement).T() * ratioRecordToBlock);
         }
 
         private bool IsLeftToRightCondition(Condition condition)

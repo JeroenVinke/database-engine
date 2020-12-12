@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine.Operations
@@ -10,8 +11,8 @@ namespace DatabaseEngine.Operations
         private CustomTuple _currentTuple;
         private int _recordIndex = -1;
 
-        public TableScanOperation(Table table)
-            : base(new List<PhysicalOperation>())
+        public TableScanOperation(LogicalElement logicalElement, Table table)
+            : base(logicalElement)
         {
             Table = table;
         }

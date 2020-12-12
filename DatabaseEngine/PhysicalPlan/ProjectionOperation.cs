@@ -1,23 +1,23 @@
-﻿using System;
+﻿using DatabaseEngine.LogicalPlan;
+using System;
 using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
 {
     public class ProjectionOperation : PhysicalOperation
     {
-        private PhysicalOperation _inputOperation;
         private List<AttributeDefinition> _projectionColumns;
 
-        public ProjectionOperation(PhysicalOperation inputOperation, List<AttributeDefinition> projectionColumns)
-            :base (new List<PhysicalOperation> { inputOperation })
+        public ProjectionOperation(LogicalElement logicalElement, PhysicalOperation inputOperation, List<AttributeDefinition> projectionColumns)
+            :base (logicalElement)
         {
-            _inputOperation = inputOperation;
+            Left = inputOperation;
             _projectionColumns = projectionColumns;
         }
 
         public override CustomTuple GetNext()
         {
-            CustomTuple tuple = _inputOperation.GetNext();
+            CustomTuple tuple = Left.GetNext();
 
             if (tuple != null)
             {

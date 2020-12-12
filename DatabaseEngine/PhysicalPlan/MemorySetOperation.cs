@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using DatabaseEngine.LogicalPlan;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace DatabaseEngine.Operations
@@ -9,8 +10,8 @@ namespace DatabaseEngine.Operations
         private int _currentIndex = 0;
 
         // probably should not have data in the queryplan itself
-        public MemorySetOperation(Set set)
-            : base(new List<PhysicalOperation>())
+        public MemorySetOperation(LogicalElement logicalElement, Set set)
+            : base(logicalElement)
         {
             Set = set.ToList();
         }
