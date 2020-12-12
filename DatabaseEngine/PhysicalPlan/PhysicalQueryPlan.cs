@@ -28,18 +28,6 @@ namespace DatabaseEngine.Operations
 
         private PhysicalOperation GetDefaultPhysicalOperation(LogicalElement element)
         {
-            //PhysicalOperation left = null;
-            //if (element.LeftChild != null)
-            //{
-            //    left = GetDefaultPhysicalOperation(element.LeftChild);
-            //}
-
-            //PhysicalOperation right = null;
-            //if (element.RightChild != null)
-            //{
-            //    right = GetDefaultPhysicalOperation(element.RightChild);
-            //}
-
             if (element is MemorySetElement memorySetElement)
             {
                 return new MemorySetOperation(memorySetElement.Set);
@@ -60,24 +48,25 @@ namespace DatabaseEngine.Operations
             }
             else if (element is SelectionElement selectionElement)
             {
-                //Table table = _relationManager.GetTable(selectionElement.Relation.Id);
-
-                //PhysicalOperation input = null;
-                //if (table.TableDefinition.HasClusteredIndex())
-                //{
-                //    input = new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
-                //}
-                //else
-                //{
-                //    input = new TableScanOperation(table);
-                //}
-
                 PhysicalOperation input = GetDefaultPhysicalOperation(selectionElement.LeftChild);
 
                 // has index
-                if (selectionElement.LeftChild is RelationElement relElement && relElement.Relation.Name.ToLower() == "products")
+                if (selectionElement.LeftChild is RelationElement relElement
+                    && TryExtractConstantConditionWithIndex(relElement.Relation, selectionElement.Condition, out LeafCondition constantCondition))
                 {
-                    return new IndexSeekOperation(Program.RelationManager.GetTable(relElement.Relation.Id), Program.RelationManager.GetTable(relElement.Relation.Id).GetIndex((relElement.Relation as TableDefinition).GetClusteredIndex().Column), selectionElement.Condition);
+                    selectionElement.Condition = selectionElement.Condition.Simplify();
+
+                    Table table = Program.RelationManager.GetTable(relElement.Relation.Id);
+                    PhysicalOperation indexSeek = new IndexSeekOperation(table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
+
+                    if (selectionElement.Condition != null)
+                    {
+                        return new FilterOperation(indexSeek, selectionElement.Condition);
+                    }
+                    else
+                    {
+                        return indexSeek;
+                    }
                 }
 
                 return new FilterOperation(input, selectionElement.Condition);
@@ -96,6 +85,47 @@ namespace DatabaseEngine.Operations
             }
 
             return null;
+        }
+
+        private bool TryExtractConstantConditionWithIndex(Relation relation, Condition condition, out LeafCondition result)
+        {
+            result = null;
+
+            if (condition is AndCondition andCondition)
+            {
+                if (TryExtractConstantConditionWithIndex(relation, andCondition.Left, out result))
+                {
+                    return true;
+                }
+                else if (TryExtractConstantConditionWithIndex(relation, andCondition.Right, out result))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            else if (condition is LeafCondition leaf
+                && leaf.Operation == Compiler.Common.RelOp.Equals)
+            {
+                foreach(Index index in (relation as TableDefinition).Indexes)
+                {
+                    if (leaf.Column == (relation as TableDefinition).GetAttributeByName(index.Column))
+                    {
+                        result = new LeafCondition()
+                        {
+                            Column = leaf.Column,
+                            Operation = leaf.Operation,
+                            Value = leaf.Value
+                        };
+
+                        leaf.AlwaysTrue = true;
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         //private PhysicalOperation FindIndexes(SelectionElement selectionElement)

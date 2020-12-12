@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace DatabaseEngine.LogicalPlan
+﻿namespace DatabaseEngine.LogicalPlan
 {
     public abstract class LogicalElement
     {
@@ -57,6 +55,5 @@ namespace DatabaseEngine.LogicalPlan
 
             return dot;
         }
-
     }
 }

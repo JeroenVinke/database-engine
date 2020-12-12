@@ -21,12 +21,21 @@ namespace DatabaseEngine.LogicalPlan
 
         public LogicalElement GetTreeForQuery(string query)
         {
-            LexicalAnalyzer analyzer = new LexicalAnalyzer(LexicalLanguage.GetLanguage(), query);
-            Parser.Parse(analyzer);
+            try
+            {
+                LexicalAnalyzer analyzer = new LexicalAnalyzer(LexicalLanguage.GetLanguage(), query);
+                Parser.Parse(analyzer);
 
-            SyntaxTreeNode command = Parser.TopLevelAST;
+                SyntaxTreeNode command = Parser.TopLevelAST;
 
-            return GetElementForTreeNode(command);
+                return GetElementForTreeNode(command);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            return null;
         }
 
         private LogicalElement GetElementForTreeNode(SyntaxTreeNode node)

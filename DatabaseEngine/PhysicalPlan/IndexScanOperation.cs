@@ -44,7 +44,7 @@ namespace DatabaseEngine.Operations
                 else
                 {
                     _currentIndex = -1;
-                    _currentNode = _currentNode.Sibling;
+                    _currentNode = _currentNode.RightSibling;
                 }
             }
 

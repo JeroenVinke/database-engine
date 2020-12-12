@@ -11,6 +11,8 @@ namespace DatabaseEngine.Operations
 
         public virtual List<PhysicalOperation> InputOperations { get; } = new List<PhysicalOperation>();
         public virtual int EstimateIOCost() => 0;
+        public virtual int EstimateCPUCost() => 0;
+        public virtual int GetCost() => EstimateCPUCost() + EstimateIOCost() * 2;
 
         public virtual void Prepare()
         {

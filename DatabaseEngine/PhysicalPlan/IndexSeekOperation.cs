@@ -1,4 +1,6 @@
-﻿using DatabaseEngine.BTree;
+﻿using Compiler.Common;
+using DatabaseEngine.BTree;
+using System;
 using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
@@ -25,7 +27,16 @@ namespace DatabaseEngine.Operations
             base.Prepare();
 
             _currentNode = _index.GetFirstLeaf();
-            _enumerator = new ScanEnumerator(Table.TableDefinition, _index, Condition);
+            _enumerator = new ScanEnumerator(Table.TableDefinition, _index, Condition, IsLeftToRightCondition(Condition));
+        }
+
+        private bool IsLeftToRightCondition(Condition condition)
+        {
+            LeafCondition leaf = (LeafCondition)condition;
+            RelOp operation = leaf.Operation;
+
+            return operation == RelOp.GreaterOrEqualThan
+                || operation == RelOp.GreaterThan;
         }
 
         public override CustomTuple GetNext()

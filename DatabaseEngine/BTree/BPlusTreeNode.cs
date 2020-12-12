@@ -14,13 +14,15 @@ namespace DatabaseEngine
         public NodeCache<TKeyType> NodeCache { get; set; }
 
         public List<BPlusTreeNodeValue> Values { get; set; } = new List<BPlusTreeNodeValue>();
-        public IEnumerable<BPlusTreeNode<TKeyType>> PointerNodes => Values.SelectMany(x => new List<Pointer> { x.LeftPointer, x.RightPointer }).Where(x => x != null).Select(x => ReadNode(x));
+        public IEnumerable<BPlusTreeNode<TKeyType>> Children => Values.SelectMany(x => new List<Pointer> { x.LeftPointer, x.RightPointer }).Distinct().Where(x => x != null).Select(x => ReadNode(x));
 
         public static int MaxId = 0;
         public int Id { get; set; }
 
-        public IBPlusTreeNode Sibling => ReadNode(SiblingPointer);
-        public Pointer SiblingPointer { get; set; }
+        public IBPlusTreeNode RightSibling => ReadNode(RightSiblingPointer);
+        public Pointer RightSiblingPointer { get; set; }
+        public IBPlusTreeNode LeftSibling => ReadNode(LeftSiblingPointer);
+        public Pointer LeftSiblingPointer { get; set; }
         public BPlusTreeNode<TKeyType> Parent { get; set; }
         public bool Dirty { get; set; }
         public MemoryManager MemoryManager { get; set; }
@@ -95,13 +97,20 @@ namespace DatabaseEngine
                 CustomTuple tuple = new CustomTuple(IndexRelation);
                 tuple.AddValueFor<TKeyType>("Value", (TKeyType)value.Value);
 
-                if (value.LeftPointer != null)
+                if (IsLeaf && value == Values.First() && LeftSiblingPointer != null)
                 {
-                    tuple.AddValueFor("LeftPointer", value.LeftPointer.Short);
+                    tuple.AddValueFor("LeftPointer", LeftSiblingPointer.Short);
                 }
                 else
                 {
-                    tuple.AddValueFor("LeftPointer", (uint)0);
+                    if (value.LeftPointer != null)
+                    {
+                        tuple.AddValueFor("LeftPointer", value.LeftPointer.Short);
+                    }
+                    else
+                    {
+                        tuple.AddValueFor("LeftPointer", (uint)0);
+                    }
                 }
 
                 if (value.Pointer != null)
@@ -113,9 +122,9 @@ namespace DatabaseEngine
                     tuple.AddValueFor("ValuePointer", (uint)0);
                 }
 
-                if (IsLeaf && value == Values.Last() && SiblingPointer != null)
+                if (IsLeaf && value == Values.Last() && RightSiblingPointer != null)
                 {
-                    tuple.AddValueFor("RightPointer", SiblingPointer.Short);
+                    tuple.AddValueFor("RightPointer", RightSiblingPointer.Short);
                 }
                 else
                 {
@@ -150,7 +159,7 @@ namespace DatabaseEngine
         {
             if (!IsLeaf)
             {
-                return PointerNodes.First().GetFirstLeaf();
+                return Children.First().GetFirstLeaf();
             }
             else
             {
@@ -194,9 +203,14 @@ namespace DatabaseEngine
                 {
                     node.IsLeaf = true;
 
+                    if (leftPointer > 0)
+                    {
+                        node.LeftSiblingPointer = new Pointer(leftPointer);
+                    }
+
                     if (rightPointer > 0)
                     {
-                        node.SiblingPointer = new Pointer(rightPointer);
+                        node.RightSiblingPointer = new Pointer(rightPointer);
                     }
                 }
             }
@@ -253,44 +267,59 @@ namespace DatabaseEngine
         }
 
         // todo: support AndCondition, OrCondition with 1 column (index column)
-        public IBPlusTreeNode FindFirstNodeForCondition(LeafCondition condition)
+        public (IBPlusTreeNode, int) FindFirstNodeForCondition(LeafCondition condition)
+        {
+            return FindNodeForCondition(condition, true);
+        }
+
+        public (IBPlusTreeNode, int) FindLastNodeForCondition(LeafCondition condition)
+        {
+            return FindNodeForCondition(condition, false);
+        }
+
+        public (IBPlusTreeNode, int) FindNodeForCondition(LeafCondition condition, bool first)
         {
             if (IsLeaf)
             {
-                CustomValueComparer comparer = Comparers.GetComparer(condition.Column.Type);
+                //CustomValueComparer comparer = Comparers.GetComparer(condition.Column.Type);
 
-                for (int i = Values.Count - 1; i >= 0; i--)
+                // todo: if column not in index, fetch data
+                if (first)
                 {
-                    if (SatisfiesCondition(comparer, Values[i].Value, condition))
+                    for (int i = 0; i < Values.Count; i++)
                     {
-                        return this;
+                        CustomTuple tuple = new CustomTuple(DataRelation);
+                        tuple.AddValueFor(condition.Column.Name, (int)Values[i].Value);
+
+                        if (condition.SatisfiesCondition(tuple))
+                        {
+                            return (this, i);
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = Values.Count - 1; i >= 0; i--)
+                    {
+                        CustomTuple tuple = new CustomTuple(DataRelation);
+                        tuple.AddValueFor(condition.Column.Name, (int)Values[i].Value);
+
+                        if (condition.SatisfiesCondition(tuple))
+                        {
+                            return (this, i);
+                        }
                     }
                 }
 
-                return null;
+                return (null, -1);
             }
             else
             {
                 // todo: if GreaterThan, get right pointer
                 Pointer target = GetTargetPointer((TKeyType)condition.Value);
                 BPlusTreeNode<TKeyType> node = ReadNode(target);
-                return node.FindFirstNodeForCondition(condition);
+                return node.FindNodeForCondition(condition, first);
             }
-        }
-
-        private bool SatisfiesCondition(CustomValueComparer comparer, object value, LeafCondition condition)
-        {
-            switch (condition.Operation)
-            {
-                case Compiler.Common.RelOp.Equals:
-                    return comparer.IsEqualTo(value, condition.Value);
-                case Compiler.Common.RelOp.GreaterThan:
-                    return comparer.IsGreaterThan(value, condition.Value);
-                case Compiler.Common.RelOp.GreaterOrEqualThan:
-                    return comparer.IsGreaterThan(value, condition.Value) || comparer.IsEqualTo(value, condition.Value);
-            }
-
-            return false;
         }
 
         private BPlusTreeNode<TKeyType> ReadNode(Pointer pointer)
@@ -324,16 +353,16 @@ namespace DatabaseEngine
                 leftChild.Values = firstHalf;
                 leftChild.IsLeaf = IsLeaf;
 
-                foreach (BPlusTreeNode<TKeyType> k in leftChild.PointerNodes)
+                foreach (BPlusTreeNode<TKeyType> k in leftChild.Children)
                 {
                     k.Parent = leftChild;
                 }
 
                 BPlusTreeNode<TKeyType> rightChild = AddChild();
+                rightChild.Values = secondHalf.ToList();
                 rightChild.IsLeaf = IsLeaf;
-                rightChild.Values = IsLeaf ? secondHalf : secondHalf.Skip(1).ToList();
 
-                foreach (BPlusTreeNode<TKeyType> k in rightChild.PointerNodes)
+                foreach (BPlusTreeNode<TKeyType> k in rightChild.Children)
                 {
                     k.Parent = rightChild;
                 }
@@ -343,7 +372,12 @@ namespace DatabaseEngine
 
                 if (leftChild.IsLeaf)
                 {
-                    leftChild.SiblingPointer = rightChild.Page;
+                    leftChild.RightSiblingPointer = rightChild.Page;
+                }
+
+                if (rightChild.IsLeaf)
+                {
+                    rightChild.LeftSiblingPointer = leftChild.Page;
                 }
 
                 IsLeaf = false;
@@ -362,11 +396,12 @@ namespace DatabaseEngine
 
                 if (IsLeaf)
                 {
-                    SiblingPointer = rightChild.Page;
+                    RightSiblingPointer = rightChild.Page;
+                    rightChild.LeftSiblingPointer = Page;
                     rightChild.IsLeaf = true;
                 }
 
-                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = null, RightPointer = rightChild.Page }); ;
+                Parent.AddValueToSelf(new BPlusTreeNodeValue { Value = secondHalf.First().Value, LeftPointer = Page, RightPointer = rightChild.Page }); ;
 
                 Dirty = true;
             }
@@ -387,12 +422,10 @@ namespace DatabaseEngine
 
             if (target == 0)
             {
-                Values.Add(value);
+                target = Values.Count;
             }
-            else
-            {
-                Values.Insert(target, value);
-            }
+
+            Values.Insert(target, value);
 
             Dirty = true;
 
@@ -507,9 +540,14 @@ namespace DatabaseEngine
                    + "\rlabel = <No values>]";
             }
 
-            if (Sibling != null)
+            if (RightSibling != null)
             {
-                dot += "\rgroup_" + Id + " -> group_" + Sibling.Id;
+                dot += "\rgroup_" + Id + " -> group_" + RightSibling.Id;
+            }
+
+            if (LeftSibling != null)
+            {
+                dot += "\rgroup_" + LeftSibling.Id + " -> group_" + Id;
             }
 
             return dot;

@@ -8,6 +8,7 @@ namespace DatabaseEngine
         public AttributeDefinition Column { get; set; }
         public RelOp Operation { get; set; }
         public object Value { get; set; }
+        public bool AlwaysTrue { get; set; }
 
         public override string ToString()
         {

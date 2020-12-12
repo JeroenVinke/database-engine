@@ -21,7 +21,7 @@ namespace DatabaseEngine.Operations
 
             if (tuple != null)
             {
-                if (SatisfiesCondition(tuple, Condition))
+                if (Condition.SatisfiesCondition(tuple))
                 {
                     return tuple;
                 }
@@ -30,37 +30,6 @@ namespace DatabaseEngine.Operations
             }
 
             return null;
-        }
-
-        private bool SatisfiesCondition(CustomTuple tuple, Condition condition)
-        {
-            if (condition == null)
-            {
-                return true;
-            }
-
-            if (condition is AndCondition andCondition)
-            {
-                return SatisfiesCondition(tuple, andCondition.Left) && SatisfiesCondition(tuple, andCondition.Right);
-            }
-            else if (condition is OrCondition orCondition)
-            {
-                return SatisfiesCondition(tuple, orCondition.Left) || SatisfiesCondition(tuple, orCondition.Right);
-            }
-            else if (condition is LeafCondition leafCondition)
-            {
-                CustomObject value = tuple.GetEntryFor(leafCondition.Column);
-
-                switch (leafCondition.Operation)
-                {
-                    case Compiler.Common.RelOp.Equals:
-                        return value.IsEqualTo(leafCondition.Value);
-                    case Compiler.Common.RelOp.GreaterThan:
-                        return value.IsGreaterThan(leafCondition.Value);
-                }
-            }
-
-            return false;
         }
     }
 }
