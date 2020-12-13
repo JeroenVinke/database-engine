@@ -55,7 +55,7 @@ namespace DatabaseEngine
                     List<string> columnNames = new List<string>();
                     foreach (CustomObject entry in result[0].Entries)
                     {
-                        columnNames.Add(entry.AttributeDefinition.Name.ToString());
+                        columnNames.Add(entry.AttributeDefinition.Relation.Name + "." + entry.AttributeDefinition.Name.ToString());
                     }
                     Console.WriteLine("[" + string.Join("|", columnNames) + "]");
                 }
@@ -102,26 +102,7 @@ namespace DatabaseEngine
                 return results;
             }
 
-            List<LogicalElement> postorderLogicalTree = AppendPostOrder(new List<LogicalElement>(), logicalTree);
-
-            QueryPlanNode root = new QueryPlanNode(null, null);
-
-            List<QueryPlanNode> lastOptions = new List<QueryPlanNode> { root };
-
-            for (int i = 0; i < postorderLogicalTree.Count; i++)
-            {
-                LogicalElement element = postorderLogicalTree[i];
-
-                Dictionary<QueryPlanNode, int> options = GetOptions(element);
-                ConnectEndNodesToNodes(lastOptions, options.Select(x => x.Key));
-
-                lastOptions = options.Select(x => x.Key).ToList();
-            }
-
-            List<QueryPlanNode> leastCostPath = GetLeastCostPath(root);
-
-            PhysicalOperation physicalOperation = PhysicalQueryPlan.CreateFromPath(logicalTree, leastCostPath);
-
+            PhysicalOperation physicalOperation = PhysicalQueryPlan.GetPhysicalPlan(logicalTree);
 
             if (query == UserQuery)
             {
@@ -162,203 +143,8 @@ namespace DatabaseEngine
             return results;
         }
 
-        private static void ConnectEndNodesToNodes(IEnumerable<QueryPlanNode> nodes, IEnumerable<QueryPlanNode> endNodes)
-        {
-            foreach (QueryPlanNode node in nodes)
-            {
-                ConnectEndNodesToNodes(node, endNodes);
-            }
-        }
+        
 
-        private static void ConnectEndNodesToNodes(QueryPlanNode node, IEnumerable<QueryPlanNode> endNodes)
-        {
-            if (node.Edges.Count == 0)
-            {
-                foreach(QueryPlanNode endNode in endNodes)
-                {
-                    node.Edges.Add(new QueryPlanNodeEdge
-                    {
-                        From = node,
-                        To = endNode,
-                        Cost = 0
-                    });
-                }
-            }
-            else
-            {
-
-                foreach (QueryPlanNode node1 in node.Edges.Select(x => x.To))
-                {
-                    ConnectEndNodesToNodes(node1, endNodes);
-                }
-            }
-        }
-
-        private static Dictionary<QueryPlanNode, int> GetOptions(LogicalElement element)
-        {
-            Dictionary<QueryPlanNode, int> options = new Dictionary<QueryPlanNode, int>();
-
-            if (element is ProjectionElement p)
-            {
-                PhysicalOperation proj = new ProjectionOperation(element, null, p.Columns.Select(x => x.AttributeDefinition).ToList());
-                options.Add(new QueryPlanNode(element, proj), proj.GetCost());
-            }
-            else if (element is SelectionElement selectionElement)
-            {
-                if (selectionElement.LeftChild is RelationElement relationElement)
-                {
-                    Table table = Program.RelationManager.GetTable(relationElement.Relation.Id);
-
-                    PhysicalOperation tableScan = new TableScanOperation(element, table);
-                    if (selectionElement.Condition != null)
-                    {
-                        PhysicalOperation f = new FilterOperation(element, tableScan, selectionElement.Condition);
-                        options.Add(new QueryPlanNode(element, f), f.GetCost());
-                    }
-                    else
-                    {
-                        options.Add(new QueryPlanNode(element, tableScan), tableScan.GetCost());
-                    }
-
-                    Condition clonedCondition = selectionElement.Condition?.Clone();
-
-                    if (TryExtractConstantConditionWithIndex(relationElement.Relation, clonedCondition, out LeafCondition constantCondition))
-                    {
-                        selectionElement.Condition = selectionElement.Condition.Simplify();
-
-                        PhysicalOperation indexSeek = new IndexSeekOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
-
-                        if (selectionElement.Condition != null)
-                        {
-                            PhysicalOperation f = new FilterOperation(element, indexSeek, clonedCondition);
-                            options.Add(new QueryPlanNode(element, f), f.GetCost());
-                        }
-                        else
-                        {
-                            options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
-                        }
-                    }
-                    else
-                    {
-                        if (table.TableDefinition.HasClusteredIndex())
-                        {
-                            PhysicalOperation indexSeek = new IndexSeekOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column), constantCondition);
-
-                            if (selectionElement.Condition != null)
-                            {
-                                PhysicalOperation f = new FilterOperation(element, indexSeek, selectionElement.Condition);
-                                options.Add(new QueryPlanNode(element, f), f.GetCost());
-                            }
-                            else
-                            {
-                                options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
-                            }
-                        }
-                    }
-                }
-            }
-            else if (element is RelationElement relElement)
-            {
-                Table table = Program.RelationManager.GetTable(relElement.Relation.Id);
-
-                if (table.TableDefinition.HasClusteredIndex())
-                {
-                    PhysicalOperation indexSeek = new IndexScanOperation(element, table, table.GetIndex(table.TableDefinition.GetClusteredIndex().Column));
-                    options.Add(new QueryPlanNode(element, indexSeek), indexSeek.GetCost());
-                }
-                else
-                {
-                    PhysicalOperation tableScan = new TableScanOperation(element, table);
-                    options.Add(new QueryPlanNode(element, tableScan), tableScan.GetCost());
-                }
-            }
-
-            return options;
-        }
-
-        private static List<LogicalElement> AppendPostOrder(List<LogicalElement> result, LogicalElement center)
-        {
-            if (center.LeftChild != null)
-            {
-                AppendPostOrder(result, center.LeftChild);
-            }
-            if (center.RightChild != null)
-            {
-                AppendPostOrder(result, center.RightChild);
-            }
-            result.Add(center);
-
-            return result;
-        }
-
-
-        private static List<QueryPlanNode> GetLeastCostPath(QueryPlanNode root)
-        {
-            QueryPlanNode cur = root;
-            List<QueryPlanNode> result = new List<QueryPlanNode>();
-            result.Add(cur);
-
-            while(cur != null)
-            {
-                QueryPlanNodeEdge cheapestEdge = cur.Edges.OrderBy(x => x.Cost).FirstOrDefault();
-                if (cheapestEdge != null)
-                {
-                    cur = cheapestEdge.To;
-
-                    if (cur != null)
-                    {
-                        result.Add(cur);
-                    }
-                }
-                else
-                {
-                    cur = null;
-                }
-            }
-
-            return result;
-        }
-
-        private static bool TryExtractConstantConditionWithIndex(Relation relation, Condition condition, out LeafCondition result)
-        {
-            result = null;
-
-            if (condition is AndCondition andCondition)
-            {
-                if (TryExtractConstantConditionWithIndex(relation, andCondition.Left, out result))
-                {
-                    return true;
-                }
-                else if (TryExtractConstantConditionWithIndex(relation, andCondition.Right, out result))
-                {
-                    return true;
-                }
-
-                return false;
-            }
-            else if (condition is LeafCondition leaf
-                && leaf.Operation == Compiler.Common.RelOp.Equals)
-            {
-                foreach (Index index in (relation as TableDefinition).Indexes)
-                {
-                    if (leaf.Column == (relation as TableDefinition).GetAttributeByName(index.Column))
-                    {
-                        result = new LeafCondition()
-                        {
-                            Column = leaf.Column,
-                            Operation = leaf.Operation,
-                            Value = leaf.Value
-                        };
-
-                        leaf.AlwaysTrue = true;
-
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
 
         private static void CreateProducersTableIfNotExists(RelationManager relationManager)
         {

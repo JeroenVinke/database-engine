@@ -1,4 +1,5 @@
 ﻿using DatabaseEngine.LogicalPlan;
+using System;
 using System.Collections.Generic;
 
 namespace DatabaseEngine.Operations
@@ -19,11 +20,16 @@ namespace DatabaseEngine.Operations
             Right = right;
         }
 
+        public override string ToString()
+        {
+            return GetType().Name;
+        }
+
         public LogicalElement LogicalElement { get; }
 
         public virtual int EstimateIOCost() => 0;
         public virtual int EstimateCPUCost() => 0;
-        public virtual int GetCost() => EstimateCPUCost() + EstimateIOCost() * 2;
+        public virtual int GetCost() => EstimateCPUCost() + (int)Math.Round(Math.Pow(EstimateIOCost(), 4));
 
         public virtual void Prepare()
         {

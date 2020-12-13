@@ -25,13 +25,14 @@ namespace DatabaseEngine.Operations
             _recordIndex = -1;
         }
 
+        public override string ToString()
+        {
+            return typeof(TableScanOperation).Name + "(" + Table.TableDefinition.Name + ")";
+        }
+
         public override int EstimateIOCost()
         {
-            if (Table.TableDefinition.HasClusteredIndex())
-            {
-                return Program.StatisticsManager.B(Table.TableDefinition);
-            }
-            return Program.StatisticsManager.T(Table.TableDefinition);
+            return Program.StatisticsManager.B(Table.TableDefinition);
         }
 
         public override CustomTuple GetNext()

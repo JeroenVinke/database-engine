@@ -23,6 +23,11 @@ namespace DatabaseEngine.Operations
             _index = index;
         }
 
+        public override string ToString()
+        {
+            return typeof(IndexSeekOperation).Name + "(" + Table.TableDefinition.Name + ")";
+        }
+
         public override void Prepare()
         {
             base.Prepare();

@@ -73,24 +73,18 @@ namespace DatabaseEngine
 
                 if (spot == null)
                 {
-                    Pointer freeBlock = MemoryManager.GetFreeBlock();
-                    block = new Block(MemoryManager, TableDefinition);
-                    block.Page = freeBlock;
+                    spot = Program.RelationManager.GetTable(TableDefinition.Id).RootBlock.Page;
+                }
 
-                    AddBulkBlock(block);
+                if (BulkMode && _bulkBlocks.TryGetValue(spot.Short, out Block foundBlockInCache))
+                {
+                    block = foundBlockInCache;
                 }
                 else
                 {
-                    if (BulkMode && _bulkBlocks.TryGetValue(spot.Short, out Block foundBlockInCache))
-                    {
-                        block = foundBlockInCache;
-                    }
-                    else
-                    {
-                        block = MemoryManager.Read(TableDefinition, spot) as Block;
+                    block = MemoryManager.Read(TableDefinition, spot) as Block;
 
-                        AddBulkBlock(block);
-                    }
+                    AddBulkBlock(block);
                 }
             }
             else

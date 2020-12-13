@@ -62,10 +62,15 @@ namespace DatabaseEngine
 
         public int B(TableDefinition tableDefinition)
         {
-            double recordsPerBlock = (double)Block.BlockSize / (double)GetTotalSizeOfTuple(tableDefinition, tableDefinition);
+            double recordsPerBlock = GetBlockSize(tableDefinition) / (double)GetTotalSizeOfTuple(tableDefinition, tableDefinition);
             double ratio = 1 / recordsPerBlock;
 
             return (int)Math.Ceiling(GetStatistics(tableDefinition.Id).Count * ratio);
+        }
+
+        public double GetBlockSize(Relation relation)
+        {
+            return (double)Block.BlockSize;
         }
 
         private void CalculateStatistic(TableDefinition tableDefinition, TableStatistics statistics)
@@ -201,7 +206,7 @@ namespace DatabaseEngine
 
         private int GetMaxSize(Relation relation, AttributeDefinition definition)
         {
-            return _statisticsPerRelation[relation.Id].ColumnStatistics[definition.Name].MaxSize;
+            return GetStatistics(relation.Id).ColumnStatistics[definition.Name].MaxSize;
         }
     }
 }

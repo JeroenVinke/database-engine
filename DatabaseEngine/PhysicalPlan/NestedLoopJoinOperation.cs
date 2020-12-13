@@ -8,13 +8,31 @@ namespace DatabaseEngine.Operations
         private AttributeDefinition _leftJoinColumn;
         private AttributeDefinition _rightJoinColumn;
 
-        public NestedLoopJoinOperation(LogicalElement logicalElement, PhysicalOperation left, PhysicalOperation right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
+        public ReadLogicalElement LeftLogical { get; }
+        public ReadLogicalElement RightLogical { get; }
+
+        public NestedLoopJoinOperation(LogicalElement logicalElement, ReadLogicalElement left, ReadLogicalElement right, AttributeDefinition leftJoinColumn, AttributeDefinition rightJoinColumn)
             : base(logicalElement)
         {
-            Left = left;
-            Right = right;
+            LeftLogical = left;
+            RightLogical = right;
             _leftJoinColumn = leftJoinColumn;
             _rightJoinColumn = rightJoinColumn;
+        }
+
+        public override int EstimateIOCost()
+        {
+            //int leftSize = left.EstimateNumberOfRows();
+            //int rightSize = right.EstimateNumberOfRows();
+
+            //int x = _statisticsManager.GetSizeOfCondition((right.InputOperations.First() as TableScanOperation).Table.TableDefinition, (right as FilterOperation).Condition);
+
+            return base.EstimateIOCost();
+        }
+
+        public override int EstimateCPUCost()
+        {
+            return LeftLogical.T() * RightLogical.T();
         }
 
         public override void Prepare()

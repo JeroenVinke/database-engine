@@ -1,5 +1,5 @@
 ﻿using DatabaseEngine.LogicalPlan;
-using System.Collections.Generic;
+using System;
 
 namespace DatabaseEngine.Operations
 {
@@ -26,13 +26,31 @@ namespace DatabaseEngine.Operations
             _currentIndex = -1;
         }
 
+        public override string ToString()
+        {
+            return typeof(IndexScanOperation).Name + "(" + Table.TableDefinition.Name + ")";
+        }
+
         public override int EstimateIOCost()
         {
-            if (Table.TableDefinition.HasClusteredIndex())
+            int b = Program.StatisticsManager.B(Table.TableDefinition);
+
+            if (b == 0)
             {
-                return Program.StatisticsManager.B(Table.TableDefinition);
+                return 0;
             }
-            return Program.StatisticsManager.T(Table.TableDefinition);
+
+            int t = Program.StatisticsManager.T(Table.TableDefinition);
+
+            if (t == 0)
+            {
+                return 0;
+            }
+
+            int dataBlocks = (int)Math.Ceiling((double)t / (double)b);
+            int indexBlocks = (int)Math.Ceiling((double)t / Program.StatisticsManager.GetBlockSize(_index.IndexRelation));
+
+            return dataBlocks + indexBlocks;
         }
 
         public override CustomTuple GetNext()

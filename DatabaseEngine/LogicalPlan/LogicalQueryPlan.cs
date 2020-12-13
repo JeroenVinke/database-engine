@@ -68,19 +68,27 @@ namespace DatabaseEngine.LogicalPlan
 
                     ReadLogicalElement joinRelation = new RelationElement(join.RightTable);
 
-                    (Condition leftPushedDownCondition, Condition leftover1) = TryPushdown((RelationElement)result, condition);
-                    (Condition rightPushedDownCondition, Condition leftover2) = TryPushdown((RelationElement)joinRelation, leftover1);
-                    leftPushedDownCondition = leftPushedDownCondition.Simplify();
-                    rightPushedDownCondition = rightPushedDownCondition.Simplify();
-                    condition = leftover2?.Simplify();
+                    if(condition != null)
+                    {
+                        (Condition leftPushedDownCondition, Condition leftover1) = TryPushdown((RelationElement)result, condition);
+                        (Condition rightPushedDownCondition, Condition leftover2) = TryPushdown((RelationElement)joinRelation, leftover1);
+                        leftPushedDownCondition = leftPushedDownCondition.Simplify();
+                        rightPushedDownCondition = rightPushedDownCondition.Simplify();
+                        condition = leftover2?.Simplify();
 
-                    if (leftPushedDownCondition != null)
-                    {
-                        result = new SelectionElement(result, leftPushedDownCondition);
+                        if (leftPushedDownCondition != null)
+                        {
+                            result = new SelectionElement(result, leftPushedDownCondition);
+                        }
+                        if (rightPushedDownCondition != null)
+                        {
+                            joinRelation = new SelectionElement(joinRelation, rightPushedDownCondition);
+                        }
                     }
-                    if (rightPushedDownCondition != null)
+                    else
                     {
-                        joinRelation = new SelectionElement(joinRelation, rightPushedDownCondition);
+                        result = new RelationElement(table.TableDefinition);
+                        joinRelation = new RelationElement(join.RightTable);
                     }
 
                     result = new CartesianProductElement(result, joinRelation, join.LeftColumn, join.RightColumn);
@@ -90,8 +98,10 @@ namespace DatabaseEngine.LogicalPlan
                     result = new RelationElement(table.TableDefinition);
                 }
 
-
-                result = new SelectionElement(result, condition);
+                if(condition != null)
+                {
+                    result = new SelectionElement(result, condition);
+                }
                 result = new ProjectionElement(result, SelectColumnsToColumns(table, selectASTNode.SelectColumns));
 
                 return result;

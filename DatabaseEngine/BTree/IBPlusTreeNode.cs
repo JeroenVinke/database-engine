@@ -6,6 +6,8 @@ namespace DatabaseEngine
     {
         bool IsRoot { get; set; }
         bool IsLeaf { get; set; }
+        Relation IndexRelation { get; set; }
+        Relation DataRelation { get; set; }
         int Id { get; set; }
         void ReadNode();
         IBPlusTreeNode AddValue(object value, Pointer valuePointer);

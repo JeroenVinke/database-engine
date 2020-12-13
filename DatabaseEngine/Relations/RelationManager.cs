@@ -138,7 +138,7 @@ namespace DatabaseEngine.Relations
 
             foreach(Index index in table.GetIndexes())
             {
-                index.RootPointer = index.IsClustered ? new Pointer(rootBlock): _memoryManager.GetFreeBlock();
+                index.RootPointer = _memoryManager.GetFreeBlock();
 
                 indexesTable.Insert(new object[] { table.Id, index.IsClustered, index.Column, index.RootPointer.Short});
             }
