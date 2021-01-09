@@ -109,7 +109,6 @@ namespace DatabaseEngine
                 object value = tuple.GetValueFor<object>(indexTree.Key.Column);
                 indexTree.Value.AddValue(value, indexKey);
 
-                string ss = ((BPlusTreeNode<int>)indexTree.Value).ToDot();
                 if (!BulkMode)
                 {
                     indexTree.Value.WriteTree();

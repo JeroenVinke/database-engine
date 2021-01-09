@@ -178,7 +178,7 @@ namespace DatabaseEngine
                 table.Add(new AttributeDefinition() { Name = "BuildYear", Type = ValueType.Integer });
                 table.Add(new AttributeDefinition() { Name = "Producer", Type = ValueType.String });
                 table.AddIndex(new Index { IsClustered = true, Column = "Id" });
-                //table.AddIndex(new Index { IsClustered = false, Column = "Producer" });
+                table.AddIndex(new Index { IsClustered = false, Column = "Producer" });
 
                 relationManager.CreateTable(table);
                 WriteProducts();

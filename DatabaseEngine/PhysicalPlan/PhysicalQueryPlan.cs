@@ -238,6 +238,16 @@ namespace DatabaseEngine.Operations
                 PhysicalOperation join = new NestedLoopJoinOperation(cartesianProduct, (ReadLogicalElement)element.LeftChild, (ReadLogicalElement)element.RightChild, cartesianProduct.LeftJoinColumn, cartesianProduct.RightJoinColumn);
                 options.Add(new QueryPlanNode(cartesianProduct, join), join.GetCost());
             }
+            else if (element is MemorySetElement memElem)
+            {
+                options.Add(new QueryPlanNode(memElem, new MemorySetOperation(memElem, memElem.Set)), 0);
+            }
+            else if (element is InsertElement insertElem)
+            {
+                Table table = Program.RelationManager.GetTable(insertElem.TableDefinition.Id);
+
+                options.Add(new QueryPlanNode(insertElem, new InsertOperation(insertElem, table)), 0);
+            }
 
             if (options.Count == 0)
             {

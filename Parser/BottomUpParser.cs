@@ -10,7 +10,7 @@ namespace Compiler.Parser
 {
     public class BottomUpParser
     {
-        private bool DebugModeEnabled = false;
+        private bool DebugModeEnabled = true;
         private LexicalAnalyzer LexicalAnalyzer { get; set; }
         private Token Current { get; set; }
 

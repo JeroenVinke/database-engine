@@ -7,10 +7,9 @@ namespace DatabaseEngine.Operations
     {
         public Table Table { get; set; }
 
-        public InsertOperation(LogicalElement logicalElement, Table table, PhysicalOperation input)
+        public InsertOperation(LogicalElement logicalElement, Table table)
             : base(logicalElement)
         {
-            Left = input;
             Table = table;
         }
 
