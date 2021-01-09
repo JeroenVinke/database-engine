@@ -7,7 +7,7 @@ This database engine uses the [Jeroen compiler](https://compiler.jeroenvinke.nl/
 The B+ Tree structure is used for indexes (clustered and nonclustered). Only indexes with a single column are supported. Data and indexes are stored in one file (data.storage). The storage file contains 4k blocks, and a block typically contains data or part of an index structure. The win32 api is used to write and read from the storage file. 
 
 ### Features
-**Supported grammar**
+**Supported grammar**<br/><br/>
 Initial -> Command
 Command -> Select Action | Insert Action
 StringExpression -> String Action
@@ -27,42 +27,40 @@ FactorTerm -> Identifier Action | NumericExpression Action | StringExpression Ac
 Factors -> Factors Comma Factor Action | Factor Action | EmptyString Action
 Identifier -> Identifier Action
 
-**Table statistics**
+**Table statistics**<br/><br/>
 ![Statistics](statistics.png)
 
-**Query execution**
+**Query execution**<br/><br/>
 ![Queries](example_queries.png)
 
-**Select by primary key**
+**Select by primary key**<br/><br/>
 SELECT * FROM products WHERE Id = 1
 
-**Show all tables in the database**
+**Show all tables in the database**<br/><br/>
 SELECT * FROM Tables
 
-**Inner loop joins**
+**Inner loop joins**<br/><br/>
 SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = "AMD" && products.BuildYear = 1900)
 
-**Filters (AND, OR, combined)**
+**Filters (AND, OR, combined)**<br/><br/>
 SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = "AMD" && products.BuildYear = 1900)
 
-**Projections**
+**Projections**<br/><br/>
 SELECT products.BuildYear, * FROM products
 
-**Insert queries**
-![Queries](insert_query.png)
+**Insert queries**<br/><br/>
+![Queries](insert_query.png)<br/><br/>
 
-
-
-###Example query:
+### Example query:
 >SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = "AMD" && products.BuildYear = 1900)
 
-**1. Syntax tree**
+**1. Syntax tree**<br/><br/>
 ![Syntax tree](syntaxtree.png)
 
-**2. Logical query plan**
+**2. Logical query plan**<br/><br/>
 ![Logical query plan](logical_query_plan.png)
 
-**3. Physical query plan determination**
+**3. Physical query plan determination**<br/><br/>
 ![Physical query plan](physical_query_plan_enumeration.png)
 
 The table statistics are used to determined the estimated cost (IO and CPU) of different options for every logical element. A graph is generated containing all these physical operations (options). The path with least cost is chosen as "ultimate" physical query plan.
