@@ -6,6 +6,7 @@ This database engine uses the [Jeroen compiler](https://compiler.jeroenvinke.nl/
 
 The B+ Tree structure is used for indexes (clustered and nonclustered). Only indexes with a single column are supported. Data and indexes are stored in one file (data.storage). The storage file contains 4k blocks, and a block typically contains data or part of an index structure. The win32 api is used to write and read from the storage file. 
 
+### Features
 **Supported grammar**
 Initial -> Command
 Command -> Select Action | Insert Action
@@ -53,7 +54,7 @@ SELECT products.BuildYear, * FROM products
 
 
 ###Example query:
-SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = "AMD" && products.BuildYear = 1900)
+>SELECT * FROM products JOIN producers on products.producer = producers.name WHERE (producers.name = "AMD" && products.BuildYear = 1900)
 
 **1. Syntax tree**
 ![Syntax tree](syntaxtree.png)
